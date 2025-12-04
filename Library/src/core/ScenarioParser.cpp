@@ -4352,6 +4352,24 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
             log.Print(MessageType::ERROR, "Specs of sensor '%s' not properly defined!", sensorName.c_str());
             return nullptr;
         }
+        //Optional output format
+        SonarOutputFormat outFormat {SonarOutputFormat::U8};
+        const char* outFormatStr = nullptr;
+        item->QueryStringAttribute("output_format", &outFormatStr);
+        if (outFormatStr != nullptr)
+        {
+            std::string ofs(outFormatStr);
+            if (ofs == "uint8")
+                outFormat = SonarOutputFormat::U8;
+            else if (ofs == "uint16")
+                outFormat = SonarOutputFormat::U16;
+            else if (ofs == "uint32")
+                outFormat = SonarOutputFormat::U32;
+            else if(ofs == "float32")
+                outFormat = SonarOutputFormat::F32;
+            else
+                log.Print(MessageType::WARNING, "Output format of sensor '%s' not recognized - using default (uint8).", sensorName.c_str());
+        }
 
         //Optional settings
         if((item = element->FirstChildElement("settings")) != nullptr)
@@ -4369,7 +4387,7 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
         if((item = element->FirstChildElement("display")) != nullptr)
             ParseColorMap(item, cMap);
         
-        FLS* fls = new FLS(sensorName, nBeams, nBins, hFov, vFov, rangeMin, rangeMax, cMap, rate);
+        FLS* fls = new FLS(sensorName, nBeams, nBins, hFov, vFov, rangeMin, rangeMax, cMap, outFormat, rate);
         fls->setGain(gain);
 
         //Optional noise definition
@@ -4419,6 +4437,24 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
             log.Print(MessageType::ERROR, "Specs of sensor '%s' not properly defined!", sensorName.c_str());
             return nullptr;
         }
+        //Optional output format
+        SonarOutputFormat outFormat {SonarOutputFormat::U8};
+        const char* outFormatStr = nullptr;
+        item->QueryStringAttribute("output_format", &outFormatStr);
+        if (outFormatStr != nullptr)
+        {
+            std::string ofs(outFormatStr);
+            if (ofs == "uint8")
+                outFormat = SonarOutputFormat::U8;
+            else if (ofs == "uint16")
+                outFormat = SonarOutputFormat::U16;
+            else if (ofs == "uint32")
+                outFormat = SonarOutputFormat::U32;
+            else if(ofs == "float32")
+                outFormat = SonarOutputFormat::F32;
+            else
+                log.Print(MessageType::WARNING, "Output format of sensor '%s' not recognized - using default (uint8).", sensorName.c_str());
+        }
 
         //Optional settings
         if((item = element->FirstChildElement("settings")) != nullptr)
@@ -4436,7 +4472,7 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
         if((item = element->FirstChildElement("display")) != nullptr)
             ParseColorMap(item, cMap);
         
-        SSS* sss = new SSS(sensorName, nBins, nLines, vFov, hFov, tilt, rangeMin, rangeMax, cMap, rate);
+        SSS* sss = new SSS(sensorName, nBins, nLines, vFov, hFov, tilt, rangeMin, rangeMax, cMap, outFormat, rate);
         sss->setGain(gain);
 
         //Optional noise definition
@@ -4487,6 +4523,24 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
             log.Print(MessageType::ERROR, "Specs of sensor '%s' not properly defined!", sensorName.c_str());
             return nullptr;
         }
+        //Optional output format
+        SonarOutputFormat outFormat {SonarOutputFormat::U8};
+        const char* outFormatStr = nullptr;
+        item->QueryStringAttribute("output_format", &outFormatStr);
+        if (outFormatStr != nullptr)
+        {
+            std::string ofs(outFormatStr);
+            if (ofs == "uint8")
+                outFormat = SonarOutputFormat::U8;
+            else if (ofs == "uint16")
+                outFormat = SonarOutputFormat::U16;
+            else if (ofs == "uint32")
+                outFormat = SonarOutputFormat::U32;
+            else if(ofs == "float32")
+                outFormat = SonarOutputFormat::F32;
+            else
+                log.Print(MessageType::WARNING, "Output format of sensor '%s' not recognized - using default (uint8).", sensorName.c_str());
+        }
 
         //Optional settings
         if((item = element->FirstChildElement("settings")) != nullptr)
@@ -4508,7 +4562,7 @@ Sensor* ScenarioParser::ParseSensor(XMLElement* element, const std::string& name
         if((item = element->FirstChildElement("display")) != nullptr)
             ParseColorMap(item, cMap);
         
-        MSIS* msis = new MSIS(sensorName, stepAngle, nBins, hFov, vFov, rotMin, rotMax, rangeMin, rangeMax, cMap, rate);
+        MSIS* msis = new MSIS(sensorName, stepAngle, nBins, hFov, vFov, rotMin, rotMax, rangeMin, rangeMax, cMap, outFormat, rate);
         msis->setGain(gain);
 
         //Optional noise definition

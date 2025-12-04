@@ -34,7 +34,7 @@ namespace sf
 {
 
 MSIS::MSIS(std::string uniqueName, Scalar stepAngleDeg, unsigned int numOfBins, Scalar horizontalBeamWidthDeg, Scalar verticalBeamWidthDeg,
-           Scalar minRotationDeg, Scalar maxRotationDeg, Scalar minRange, Scalar maxRange, ColorMap cm, Scalar frequency)
+           Scalar minRotationDeg, Scalar maxRotationDeg, Scalar minRange, Scalar maxRange, ColorMap cm, SonarOutputFormat outputFormat, Scalar frequency)
     : Camera(uniqueName, (unsigned int)ceil(Scalar(360)/stepAngleDeg), numOfBins, horizontalBeamWidthDeg, frequency)
 {
     range.x = 0.f;
@@ -48,6 +48,7 @@ MSIS::MSIS(std::string uniqueName, Scalar stepAngleDeg, unsigned int numOfBins, 
     setGain(1);
     fovV = verticalBeamWidthDeg <= Scalar(0) ? Scalar(20) : (verticalBeamWidthDeg > Scalar(179) ? Scalar(179) : verticalBeamWidthDeg);
     cMap = cm;
+    outputFormat_ = outputFormat;
     sonarData = NULL;
     displayData = NULL;
     newDataCallback = NULL;
@@ -163,6 +164,11 @@ Scalar MSIS::getGain() const
 {
     return gain;
 }
+
+SonarOutputFormat MSIS::getOutputFormat() const
+{
+    return outputFormat_;
+}
     
 VisionSensorType MSIS::getVisionSensorType() const
 {
@@ -177,7 +183,7 @@ OpenGLView* MSIS::getOpenGLView() const
 void MSIS::InitGraphics()
 {
     glMSIS = new OpenGLMSIS(glm::vec3(0,0,0), glm::vec3(0,0,1.f), glm::vec3(0,-1.f,0),
-                           (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, range);
+                           (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, range, outputFormat_);
     glMSIS->setNoise(noise);
     glMSIS->setSonar(this);
     glMSIS->setColorMap(cMap);
@@ -206,7 +212,7 @@ void MSIS::InstallNewDataHandler(std::function<void(MSIS*)> callback)
 
 void MSIS::NewDataReady(void* data, unsigned int index)
 {
-    if(newDataCallback != NULL)
+    if(newDataCallback != nullptr)
     {
         if(index == 0)
         {
@@ -216,9 +222,9 @@ void MSIS::NewDataReady(void* data, unsigned int index)
         }
         else
         {
-            sonarData = (GLubyte*)data;
+            sonarData = data;
             newDataCallback(this);
-            sonarData = NULL;
+            sonarData = nullptr;
         }
     }
 

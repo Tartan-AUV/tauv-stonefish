@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 21/07/20.
-//  Copyright (c) 2020-2024 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_OpenGLMSIS__
@@ -47,11 +47,12 @@ namespace sf
          \param verticalBeamWidthDeg the vertical width of the sonar beam [deg]
          \param numOfSteps the number of sonar motor steps
          \param numOfBins the number of sonar range bins
-         \param range_ the distance to the closest and farthest recorded object [m]
+         \param range the distance to the closest and farthest recorded object [m]
+         \param outputFormat the format of the sonar output data
          */
         OpenGLMSIS(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp,
                    GLfloat horizontalBeamWidthDeg, GLfloat verticalBeamWidthDeg, 
-                   GLuint numOfSteps, GLuint numOfBins, glm::vec2 range_);
+                   GLuint numOfSteps, GLuint numOfBins, glm::vec2 range, SonarOutputFormat outputFormat);
         
         //! A destructor.
         ~OpenGLMSIS();
@@ -86,19 +87,19 @@ namespace sf
         
     protected:
         //MSIS specific
-        MSIS* sonar;
-        GLuint nSteps;
-        GLuint nBins;
-        glm::uvec2 nBeamSamples;
-        glm::mat4 beamRotation;
-        GLint currentStep;
-        glm::vec2 rotationLimits;
-        glm::vec2 noise;
+        MSIS* sonar_;
+        GLuint nSteps_;
+        GLuint nBins_;
+        glm::uvec2 nBeamSamples_;
+        glm::mat4 beamRotation_;
+        GLint currentStep_;
+        glm::vec2 rotationLimits_;
+        glm::vec2 noise_;
         //OpenGL
-        GLuint outputTex[2];
-        GLuint fanDiv;
-        GLSLShader* sonarOutputShader;
-        GLSLShader* sonarUpdateShader;
+        GLuint outputTex_[2];
+        GLuint fanDiv_;
+        GLSLShader* sonarOutputShader_;
+        GLSLShader* sonarUpdateShader_;
     };
 }
 

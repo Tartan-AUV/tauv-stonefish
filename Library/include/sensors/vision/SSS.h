@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 20/06/20.
-//  Copyright (c) 2020 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_SSS__
@@ -28,7 +28,7 @@
 
 #include <functional>
 #include "sensors/vision/Camera.h"
-#include "graphics/OpenGLDataStructs.h"
+#include "graphics/OpenGLSonar.h"
 
 namespace sf
 {
@@ -49,11 +49,12 @@ namespace sf
          \param minRange the minimum measured range [m]
          \param maxRange the maximum measured range [m]
          \param cm the color map used to display sonar data
+         \param outputFormat the format of the sonar output data
          \param frequency the sampling frequency of the sensor [Hz] (-1 if updated based on maximum range)
          */
         SSS(std::string uniqueName, unsigned int numOfBins, unsigned int numOfLines, Scalar verticalBeamWidthDeg,
             Scalar horizontalBeamWidthDeg, Scalar verticalTiltDeg, Scalar minRange, Scalar maxRange, ColorMap cm, 
-            Scalar frequency = Scalar(-1));
+            SonarOutputFormat outputFormat = SonarOutputFormat::U8, Scalar frequency = Scalar(-1));
        
         //! A destructor.
         ~SSS();
@@ -120,13 +121,16 @@ namespace sf
 
         //! A method returning the gain of the sonar.
         Scalar getGain() const;
+
+        //! A method returning the output format of the sonar data.
+        SonarOutputFormat getOutputFormat() const;
         
         //! A method returning a pointer to the sonar data.
         /*!
          \param index the id of the OpenGL camera (here sonar) for which the data pointer is requested
          \return pointer to the image data buffer
          */
-        void* getImageDataPointer(unsigned int index = 0);
+        void* getImageDataPointer(unsigned int index = 0) override;
         
         //! A method returning the resolution of the simulated display image.
         /*!
@@ -148,7 +152,7 @@ namespace sf
         void InitGraphics();
         
         OpenGLSSS* glSSS;
-        GLubyte* sonarData;
+        void* sonarData;
         GLubyte* displayData;
         glm::vec2 range;
         glm::vec2 noise;
@@ -156,6 +160,7 @@ namespace sf
         Scalar fovV;
         Scalar tilt;
         ColorMap cMap;
+        SonarOutputFormat outputFormat_;
         std::function<void(SSS*)> newDataCallback;
     };
 }

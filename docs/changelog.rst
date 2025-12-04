@@ -9,6 +9,8 @@ The changelog of the library code is presented below. **Breaking changes** were 
 
 - Implemented soft body cables
 - Added support for glueing dynamic bodies to robot links
+- Added an option to define the output data format for all sonar types
+- Disabled selection of static planes in the 3D view
 - *Renamed multiple symbols in the library*
 
 1.5

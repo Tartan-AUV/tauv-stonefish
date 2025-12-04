@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 22/07/20.
-//  Copyright (c) 2020-2024 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_OpenGLSonar__
@@ -32,7 +32,9 @@
 namespace sf
 {
     class GLSLShader;
-    
+ 
+    enum class SonarOutputFormat { U8, U16, U32, F32 };
+
     //! An abstract class representing a sonar view.
     class OpenGLSonar : public OpenGLView
     {
@@ -43,9 +45,10 @@ namespace sf
          \param direction a unit vector parallel to the sonar central axis [1]
          \param sonarUp a unit vector perpendicular to the sonar plane [1]
          \param displayResolution the resolution of the sonar display [px]
-         \param range_ the distance to the closest and farthest recorded object [m]
+         \param range the distance to the closest and farthest recorded object [m]
+         \param outputFormat the format of the sonar output data
          */
-        OpenGLSonar(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp, glm::uvec2 displayResolution, glm::vec2 range_);
+        OpenGLSonar(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp, glm::uvec2 displayResolution, glm::vec2 range, SonarOutputFormat outputFormat);
         
         //! A destructor.
         virtual ~OpenGLSonar();
@@ -113,6 +116,9 @@ namespace sf
          */
         void setColorMap(ColorMap cm);
         
+        //! A method return output format of the sonar.
+        SonarOutputFormat getOutputFormat() const;
+
         //! A method returning the type of the view.
         ViewType getType() const override;
         
@@ -124,36 +130,37 @@ namespace sf
         
     protected:
         //Sonar specific
-        glm::mat4 sonarTransform;
-        glm::vec3 eye;
-        glm::vec3 dir;
-        glm::vec3 up;
-        glm::vec3 tempEye;
-        glm::vec3 tempDir;
-        glm::vec3 tempUp;
-        glm::mat4 projection;
-        glm::vec2 range;
-        glm::vec2 fov;
-        GLfloat gain;
-        std::default_random_engine randGen;
-        std::uniform_real_distribution<float> randDist;
-        ColorMap cMap;
-        bool settingsUpdated;
-        bool _needsUpdate;
-        bool newData;
+        glm::mat4 sonarTransform_;
+        glm::vec3 eye_;
+        glm::vec3 dir_;
+        glm::vec3 up_;
+        glm::vec3 tempEye_;
+        glm::vec3 tempDir_;
+        glm::vec3 tempUp_;
+        glm::mat4 projection_;
+        glm::vec2 range_;
+        glm::vec2 fov_;
+        GLfloat gain_;
+        std::default_random_engine randGen_;
+        std::uniform_real_distribution<float> randDist_;
+        ColorMap cMap_;
+        bool settingsUpdated_;
+        bool needsUpdate_;
+        bool newData_;
         
         //OpenGL
-        GLuint inputRangeIntensityTex;
-        GLuint inputDepthRBO;
-        GLuint outputPBO;
-        GLuint displayTex;
-        GLuint displayFBO;
-        GLuint displayPBO;
-        GLuint displayVAO;
-        GLuint displayVBO;
+        SonarOutputFormat outputFormat_;
+        GLuint inputRangeIntensityTex_;
+        GLuint inputDepthRBO_;
+        GLuint outputPBO_;
+        GLuint displayTex_;
+        GLuint displayFBO_;
+        GLuint displayPBO_;
+        GLuint displayVAO_;
+        GLuint displayVBO_;
         
-        static GLSLShader* sonarInputShader[2];
-        static GLSLShader* sonarVisualizeShader;
+        static GLSLShader* sonarInputShader_[2];
+        static GLSLShader* sonarVisualizeShader_[2];
     };
 }
 

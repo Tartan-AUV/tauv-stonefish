@@ -34,7 +34,7 @@ namespace sf
 {
 
 SSS::SSS(std::string uniqueName, unsigned int numOfBins, unsigned int numOfLines, Scalar verticalBeamWidthDeg,
-         Scalar horizontalBeamWidthDeg, Scalar verticalTiltDeg, Scalar minRange, Scalar maxRange, ColorMap cm, Scalar frequency)
+         Scalar horizontalBeamWidthDeg, Scalar verticalTiltDeg, Scalar minRange, Scalar maxRange, ColorMap cm, SonarOutputFormat outputFormat, Scalar frequency)
     : Camera(uniqueName, (numOfBins%2==0 ? numOfBins : numOfBins+1), numOfLines, verticalBeamWidthDeg, frequency)
 {
     range.x = 0.f;
@@ -46,6 +46,7 @@ SSS::SSS(std::string uniqueName, unsigned int numOfBins, unsigned int numOfLines
     fovV = horizontalBeamWidthDeg <= Scalar(0) ? Scalar(1) : (horizontalBeamWidthDeg > Scalar(90) ? Scalar(90) : horizontalBeamWidthDeg);
     tilt = verticalTiltDeg < Scalar(0) ? Scalar(0) : (verticalTiltDeg > Scalar(90) ? Scalar(90) : verticalTiltDeg);
     cMap = cm;
+    outputFormat_ = outputFormat;
     sonarData = NULL;
     displayData = NULL;
     newDataCallback = NULL;
@@ -115,6 +116,11 @@ Scalar SSS::getGain() const
 {
     return gain;
 }
+
+SonarOutputFormat SSS::getOutputFormat() const
+{
+    return outputFormat_;
+}
    
 VisionSensorType SSS::getVisionSensorType() const
 {
@@ -129,7 +135,7 @@ OpenGLView* SSS::getOpenGLView() const
 void SSS::InitGraphics()
 {
     glSSS = new OpenGLSSS(glm::vec3(0,0,0), glm::vec3(0,0,1.f), glm::vec3(0,-1.f,0),
-                          (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, (GLfloat)tilt, range);
+                          (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, (GLfloat)tilt, range, outputFormat_);
     glSSS->setNoise(noise);
     glSSS->setSonar(this);
     glSSS->setColorMap(cMap);
@@ -168,7 +174,7 @@ void SSS::NewDataReady(void* data, unsigned int index)
         }
         else
         {
-            sonarData = (GLubyte*)data;
+            sonarData = data;
             newDataCallback(this);
             sonarData = NULL;
         }

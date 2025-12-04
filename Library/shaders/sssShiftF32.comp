@@ -1,5 +1,5 @@
 /*    
-    Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
+    Copyright (c) 2025 Patryk Cieslak. All rights reserved.
 
     This file is a part of Stonefish.
 
@@ -19,14 +19,21 @@
 
 #version 430
 
-in vec2 texcoord;
-out vec3 fragcolor;
-uniform sampler2D texSonarData;
-uniform int colorMap;
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-#inject "colorMapping.glsl"
+// One input
+layout(r32f) uniform image2D sonarOutputIn;
+
+// One output
+layout(r32f) uniform image2D sonarOutputOut;
 
 void main()
 {
-    fragcolor = applyColorMapping(texture(texSonarData, texcoord).r, colorMap);
+    uvec2 dim = imageSize(sonarOutputOut).xy;
+
+    if(gl_GlobalInvocationID.x < dim.x && gl_GlobalInvocationID.y < dim.y)
+    {
+        float data = imageLoad(sonarOutputIn, ivec2(gl_GlobalInvocationID.x, int(gl_GlobalInvocationID.y)-1)).r;
+        imageStore(sonarOutputOut, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y), vec4(data));
+    }
 }

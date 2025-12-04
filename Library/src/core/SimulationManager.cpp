@@ -1199,7 +1199,6 @@ void SimulationManager::UpdateDrawingQueue()
 std::pair<Entity*, int>  SimulationManager::PickEntity(Vector3 eye, Vector3 ray)
 {
     ray *= Scalar(100000);
-    //btCollisionWorld::ClosestRayResultCallback rayCallback(eye, eye+ray);
     DetailedRayResultCallback rayCallback(eye, eye+ray);
     rayCallback.m_collisionFilterGroup = MASK_DYNAMIC;
     rayCallback.m_collisionFilterMask = MASK_DYNAMIC | MASK_STATIC | MASK_ANIMATED_COLLIDING | MASK_ANIMATED_NONCOLLIDING;
@@ -1207,11 +1206,15 @@ std::pair<Entity*, int>  SimulationManager::PickEntity(Vector3 eye, Vector3 ray)
                 
     if(rayCallback.hasHit())
     {
-        Entity* ent = (Entity*)rayCallback.m_collisionObject->getUserPointer();
-        return std::make_pair(ent, rayCallback.m_childShapeIndex);
+        Entity* ent = static_cast<Entity*>(rayCallback.m_collisionObject->getUserPointer());
+        if (ent != nullptr
+            && !(ent->getType() == EntityType::STATIC && static_cast<StaticEntity*>(ent)->getStaticType() == StaticEntityType::PLANE) // Ignore plane entities
+        ) 
+        {
+            return std::make_pair(ent, rayCallback.m_childShapeIndex);
+        }
     }
-    else
-        return std::make_pair(nullptr, -1);
+    return std::make_pair(nullptr, -1);
 }
 
 void SimulationManager::RenderBulletDebug()

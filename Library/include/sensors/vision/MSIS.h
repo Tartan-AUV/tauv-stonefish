@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 21/07/20.
-//  Copyright (c) 2020 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_MSIS__
@@ -28,7 +28,7 @@
 
 #include <functional>
 #include "sensors/vision/Camera.h"
-#include "graphics/OpenGLDataStructs.h"
+#include "graphics/OpenGLSonar.h"
 
 namespace sf
 {
@@ -50,10 +50,12 @@ namespace sf
          \param minRange the minimum measured range [m]
          \param maxRange the maximum measured range [m]
          \param cm the color map used to display sonar data
+         \param outputFormat the output format of the sensor data
          \param frequency the sampling frequency of the sensor [Hz] (-1 if updated based on maximum range)
          */
         MSIS(std::string uniqueName, Scalar stepAngleDeg, unsigned int numOfBins, Scalar horizontalBeamWidthDeg, Scalar verticalBeamWidthDeg,
-             Scalar minRotationDeg, Scalar maxRotationDeg, Scalar minRange, Scalar maxRange, ColorMap cm, Scalar frequency = Scalar(-1));
+             Scalar minRotationDeg, Scalar maxRotationDeg, Scalar minRange, Scalar maxRange, ColorMap cm, 
+             SonarOutputFormat outputFormat = SonarOutputFormat::U8, Scalar frequency = Scalar(-1));
        
         //! A destructor.
         ~MSIS();
@@ -144,12 +146,15 @@ namespace sf
         //! A method returning the current bean index in the sonar image.
         GLuint getCurrentBeamIndex() const;
 
+        //! A method returning the output format of the sonar data.
+        SonarOutputFormat getOutputFormat() const;
+
         //! A method returning a pointer to the sonar data.
         /*!
          \param index the id of the OpenGL camera (here sonar) for which the data pointer is requested
          \return pointer to the image data buffer
          */
-        void* getImageDataPointer(unsigned int index = 0);
+        void* getImageDataPointer(unsigned int index = 0) override;
         
         //! A method returning the resolution of the simulated display image.
         /*!
@@ -171,7 +176,7 @@ namespace sf
         void InitGraphics();
         
         OpenGLMSIS* glMSIS;
-        GLubyte* sonarData;
+        void* sonarData;
         GLubyte* displayData;
         int currentStep;
         bool cw;
@@ -183,6 +188,7 @@ namespace sf
         Scalar fovV;
         Scalar stepSize;
         ColorMap cMap;
+        SonarOutputFormat outputFormat_;
         std::function<void(MSIS*)> newDataCallback;
     };
 }

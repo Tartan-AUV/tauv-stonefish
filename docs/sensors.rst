@@ -581,10 +581,13 @@ Forward-looking sonar (FLS)
 
 The forward-looking sonar (FLS) is an acoustic device utilising multiple acoustic beams arranged in a planar fan pattern, to generate an acoustic echo intensity map in cylindrical coordinates. This image can be used to detect obstacles or map underwater structures. A characteristic property of this kind of sonar is that the beam width perpendicular to the fan plane is significant, leading to multiple echoes from different beam parts which get projected on the same line. The FLS suffers from significant mesurement noise, which can be simulated as a combination of a multiplicative component and an additive component corrupting the measured echo intensity, both possible to adjust by providing their standard deviations.
 
+The output data format can be set to one of the following options: uint8, uint16, uint32 or float32. It will naturally affect the resolution of the echo intensity measurements. 
+When the output format is missing the sensor defaults to 8-bit unsigned integer. 
+
 .. code-block:: xml
 
     <sensor name="FLS" type="fls">
-        <specs beams="512" bins="500" horizontal_fov="120.0" vertical_fov="30.0"/>
+        <specs beams="512" bins="500" horizontal_fov="120.0" vertical_fov="30.0" output_format="uint16"/>
         <settings range_min="0.5" range_max="10.0" gain="1.1"/>
         <noise multiplicative="0.01" additive="0.02"/>
         <display colormap="hot"/>
@@ -595,7 +598,7 @@ The forward-looking sonar (FLS) is an acoustic device utilising multiple acousti
 .. code-block:: cpp
 
     #include <Stonefish/sensors/vision/FLS.h>
-    sf::FLS* fls = new sf::FLS("FLS", 512, 500, 120.0, 30.0, 0.5, 10.0, sf::ColorMap::HOT);
+    sf::FLS* fls = new sf::FLS("FLS", 512, 500, 120.0, 30.0, 0.5, 10.0, sf::ColorMap::HOT, sf::SonarOutputFormat::U16);
     fls->setGain(1.1);
     fls->setNoise(0.01, 0.02);
     robot->AddVisionSensor(fls, "Link1", sf::I4());
@@ -608,6 +611,8 @@ Mechanical scanning imaging sonar (MSIS)
 ----------------------------------------
 
 The mechanical scanning imaging sonar (MSIS) is an acoustic device utilising a single rotating acoustic beam. The beam rotates in one plane and generates an acoustic echo intensity map in cylindrical coordinates. This map can be used to detect obstacles or map underwater structures. This kind of sonar produces images similar to the FLS, but due to the rotation of the beam the image is corrupted by the robot's motion. The MSIS suffers from significant mesurement noise, which can be simulated as a combination of a multiplicative component and an additive component corrupting the measured echo intensity, both possible to adjust by providing their standard deviations.
+
+The output data format can be set in the same way as for the FLS.
 
 .. code-block:: xml
 
@@ -632,6 +637,8 @@ Side-scan sonar (SSS)
 ---------------------
 
 The side-scan sonar (SSS) is an acoutic device with two tranducers, located symmetrically on the robot's hull, with a specified angular separation. The transducers are commonly pointing to the seafloor and allow for fast and detailed mapping of large areas. Each of the transducers emits and receives one beam, creating one line of an acoustic image. The display of the acoustic map is done by adding subsequent lines in a "waterfall" fashion. The SSS suffers from significant mesurement noise, which can be simulated as a combination of a multiplicative component and an additive component corrupting the measured echo intensity, both possible to adjust by providing their standard deviations.
+
+The output data format can be set in the same way as for the FLS.
 
 .. code-block:: xml
 

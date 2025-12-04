@@ -37,113 +37,114 @@
 namespace sf
 {
 
-GLSLShader* OpenGLSonar::sonarInputShader[2] = {nullptr, nullptr};
-GLSLShader* OpenGLSonar::sonarVisualizeShader = nullptr;
+GLSLShader* OpenGLSonar::sonarInputShader_[2] = {nullptr, nullptr};
+GLSLShader* OpenGLSonar::sonarVisualizeShader_[2] = {nullptr, nullptr};
 
-OpenGLSonar::OpenGLSonar(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp, glm::uvec2 displayResolution, glm::vec2 range_)
-    : OpenGLView(0, 0, displayResolution.x, displayResolution.y), randDist(0.f, 1.f)
+OpenGLSonar::OpenGLSonar(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp, glm::uvec2 displayResolution, glm::vec2 range, SonarOutputFormat outputFormat)
+    : OpenGLView(0, 0, displayResolution.x, displayResolution.y), randDist_(0.f, 1.f)
 {
-    _needsUpdate = false;
+    needsUpdate_ = false;
     continuous = false;
-    newData = false;
-    range = range_;
-    gain = 1.f;
-    settingsUpdated = true;
-    outputPBO = 0;
-    displayPBO = 0;
-    fov = glm::vec2(1.0);
-    cMap = ColorMap::GREEN_BLUE;
+    newData_ = false;
+    range_ = range;
+    gain_ = 1.f;
+    settingsUpdated_ = true;
+    outputPBO_ = 0;
+    displayPBO_ = 0;
+    fov_ = glm::vec2(1.0);
+    cMap_ = ColorMap::GREEN_BLUE;
+    outputFormat_ = outputFormat;
     SetupSonar(eyePosition, direction, sonarUp);
 }
 
 OpenGLSonar::~OpenGLSonar()
 {
-    glDeleteTextures(1, &inputRangeIntensityTex);
-    glDeleteRenderbuffers(1, &inputDepthRBO);
+    glDeleteTextures(1, &inputRangeIntensityTex_);
+    glDeleteRenderbuffers(1, &inputDepthRBO_);
     glDeleteFramebuffers(1, &renderFBO);
-    glDeleteTextures(1, &displayTex);
-    glDeleteFramebuffers(1, &displayFBO);
-    glDeleteVertexArrays(1, &displayVAO);
-    glDeleteBuffers(1, &displayVBO);
-    if(outputPBO != 0) glDeleteBuffers(1, &outputPBO);
-    if(displayPBO != 0) glDeleteBuffers(1, &displayPBO);
+    glDeleteTextures(1, &displayTex_);
+    glDeleteFramebuffers(1, &displayFBO_);
+    glDeleteVertexArrays(1, &displayVAO_);
+    glDeleteBuffers(1, &displayVBO_);
+    if(outputPBO_ != 0) glDeleteBuffers(1, &outputPBO_);
+    if(displayPBO_ != 0) glDeleteBuffers(1, &displayPBO_);
 }
 
 void OpenGLSonar::SetupSonar(glm::vec3 _eye, glm::vec3 _dir, glm::vec3 _up)
 {
-    tempEye = _eye;
-    tempDir = _dir;
-    tempUp = _up;
+    tempEye_ = _eye;
+    tempDir_ = _dir;
+    tempUp_ = _up;
 }
 
 void OpenGLSonar::UpdateTransform()
 {
-    eye = tempEye;
-    dir = tempDir;
-    up = tempUp;
+    eye_ = tempEye_;
+    dir_ = tempDir_;
+    up_ = tempUp_;
     SetupSonar();
 }
 
 void OpenGLSonar::SetupSonar()
 {
-    sonarTransform = glm::lookAt(eye, eye+dir, up);
+    sonarTransform_ = glm::lookAt(eye_, eye_+dir_, up_);
 }
 
 glm::vec3 OpenGLSonar::GetEyePosition() const
 {
-    return eye;
+    return eye_;
 }
 
 glm::vec3 OpenGLSonar::GetLookingDirection() const
 {
-    return dir;
+    return dir_;
 }
 
 glm::vec3 OpenGLSonar::GetUpDirection() const
 {
-    return up;
+    return up_;
 }
 
 glm::mat4 OpenGLSonar::GetProjectionMatrix() const
 {
-    return projection;
+    return projection_;
 }
 
 glm::mat4 OpenGLSonar::GetViewMatrix() const
 {
-    return sonarTransform;
+    return sonarTransform_;
 }
 
 GLfloat OpenGLSonar::GetNearClip() const
 {
-    return range.x;
+    return range_.x;
 }
 
 GLfloat OpenGLSonar::GetFarClip() const
 {
-    return range.y;
+    return range_.y;
 }
 
 GLfloat OpenGLSonar::GetFOVX() const
 {
-    return fov.x;
+    return fov_.x;
 }
         
 GLfloat OpenGLSonar::GetFOVY() const
 {
-    return fov.y;
+    return fov_.y;
 }
 
 void OpenGLSonar::Update()
 {
-    _needsUpdate = true;
+    needsUpdate_ = true;
 }
 
 bool OpenGLSonar::needsUpdate()
 {
-    if(_needsUpdate)
+    if(needsUpdate_)
     {
-        _needsUpdate = false;
+        needsUpdate_ = false;
         return enabled;
     }
     else
@@ -152,7 +153,12 @@ bool OpenGLSonar::needsUpdate()
 
 void OpenGLSonar::setColorMap(ColorMap cm)
 {
-    cMap = cm;
+    cMap_ = cm;
+}
+
+SonarOutputFormat OpenGLSonar::getOutputFormat() const
+{
+    return outputFormat_;
 }
 
 ViewType OpenGLSonar::getType() const
@@ -163,34 +169,39 @@ ViewType OpenGLSonar::getType() const
 ///////////////////////// Static /////////////////////////////
 void OpenGLSonar::Init()
 {
-    sonarInputShader[0] = new GLSLShader("sonarInput.frag", "sonarInput.vert");
-    sonarInputShader[0]->AddUniform("MVP", ParameterType::MAT4);
-    sonarInputShader[0]->AddUniform("M", ParameterType::MAT4);
-    sonarInputShader[0]->AddUniform("N", ParameterType::MAT3);
-    sonarInputShader[0]->AddUniform("eyePos", ParameterType::VEC3);
-    sonarInputShader[0]->AddUniform("restitution", ParameterType::FLOAT);
+    sonarInputShader_[0] = new GLSLShader("sonarInput.frag", "sonarInput.vert");
+    sonarInputShader_[0]->AddUniform("MVP", ParameterType::MAT4);
+    sonarInputShader_[0]->AddUniform("M", ParameterType::MAT4);
+    sonarInputShader_[0]->AddUniform("N", ParameterType::MAT3);
+    sonarInputShader_[0]->AddUniform("eyePos", ParameterType::VEC3);
+    sonarInputShader_[0]->AddUniform("restitution", ParameterType::FLOAT);
     
-    sonarInputShader[1] = new GLSLShader("sonarInputUv.frag", "sonarInputUv.vert");
-    sonarInputShader[1]->AddUniform("MVP", ParameterType::MAT4);
-    sonarInputShader[1]->AddUniform("M", ParameterType::MAT4);
-    sonarInputShader[1]->AddUniform("N", ParameterType::MAT3);
-    sonarInputShader[1]->AddUniform("eyePos", ParameterType::VEC3);
-    sonarInputShader[1]->AddUniform("restitution", ParameterType::FLOAT);
-    sonarInputShader[1]->AddUniform("texNormal", ParameterType::INT);
-    sonarInputShader[1]->Use();
-    sonarInputShader[1]->SetUniform("texNormal", TEX_MAT_NORMAL);
+    sonarInputShader_[1] = new GLSLShader("sonarInputUv.frag", "sonarInputUv.vert");
+    sonarInputShader_[1]->AddUniform("MVP", ParameterType::MAT4);
+    sonarInputShader_[1]->AddUniform("M", ParameterType::MAT4);
+    sonarInputShader_[1]->AddUniform("N", ParameterType::MAT3);
+    sonarInputShader_[1]->AddUniform("eyePos", ParameterType::VEC3);
+    sonarInputShader_[1]->AddUniform("restitution", ParameterType::FLOAT);
+    sonarInputShader_[1]->AddUniform("texNormal", ParameterType::INT);
+    sonarInputShader_[1]->Use();
+    sonarInputShader_[1]->SetUniform("texNormal", TEX_MAT_NORMAL);
     OpenGLState::UseProgram(0);
     
-    sonarVisualizeShader = new GLSLShader("sonarVisualize.frag", "printer.vert");
-    sonarVisualizeShader->AddUniform("texSonarData", ParameterType::INT);
-    sonarVisualizeShader->AddUniform("colorMap", ParameterType::INT);
+    sonarVisualizeShader_[0] = new GLSLShader("sonarVisualize.frag", "printer.vert");
+    sonarVisualizeShader_[0]->AddUniform("texSonarData", ParameterType::INT);
+    sonarVisualizeShader_[0]->AddUniform("colorMap", ParameterType::INT);
+
+    sonarVisualizeShader_[1] = new GLSLShader("sonarVisualizeU32.frag", "printer.vert");
+    sonarVisualizeShader_[1]->AddUniform("texSonarData", ParameterType::INT);
+    sonarVisualizeShader_[1]->AddUniform("colorMap", ParameterType::INT);
 }
 
 void OpenGLSonar::Destroy()
 {
-    if(sonarInputShader[0] != nullptr) delete sonarInputShader[0];
-    if(sonarInputShader[1] != nullptr) delete sonarInputShader[1];
-    if(sonarVisualizeShader != nullptr) delete sonarVisualizeShader;
+    if(sonarInputShader_[0] != nullptr) delete sonarInputShader_[0];
+    if(sonarInputShader_[1] != nullptr) delete sonarInputShader_[1];
+    if(sonarVisualizeShader_[0] != nullptr) delete sonarVisualizeShader_[0];
+    if(sonarVisualizeShader_[1] != nullptr) delete sonarVisualizeShader_[1];
 }
 
 }

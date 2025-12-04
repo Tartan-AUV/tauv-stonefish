@@ -1,5 +1,5 @@
 /*    
-    Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
+    Copyright (c) 2025 Patryk Cieslak. All rights reserved.
 
     This file is a part of Stonefish.
 
@@ -21,12 +21,14 @@
 
 in vec2 texcoord;
 out vec3 fragcolor;
-uniform sampler2D texSonarData;
+uniform usampler2D texSonarData;
 uniform int colorMap;
 
 #inject "colorMapping.glsl"
 
+#define UINT32_MAX 4294967295.0
+
 void main()
 {
-    fragcolor = applyColorMapping(texture(texSonarData, texcoord).r, colorMap);
+    fragcolor = applyColorMapping(float(texture(texSonarData, texcoord).r) / UINT32_MAX, colorMap);
 }

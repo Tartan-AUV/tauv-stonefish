@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 13/02/20.
-//  Copyright (c) 2020-2024 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_OpenGLFLS__
@@ -54,10 +54,11 @@ namespace sf
          \param verticalFovDeg the vertical field of view of the sonar [deg]
          \param numOfBeams the number of sonar beams
          \param numOfBins the number of sonar range bins
-         \param range_ the distance to the closest and farthest recorded object [m]
+         \param range the distance to the closest and farthest recorded object [m]
+         \param outputFormat the format of the sonar output data
          */
         OpenGLFLS(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 sonarUp,
-                  GLfloat horizontalFOVDeg, GLfloat verticalFOVDeg, GLuint numOfBeams, GLuint numOfBins, glm::vec2 range_);
+                  GLfloat horizontalFOVDeg, GLfloat verticalFOVDeg, GLuint numOfBeams, GLuint numOfBins, glm::vec2 range, SonarOutputFormat outputFormat);
         
         //! A destructor.
         ~OpenGLFLS();
@@ -92,18 +93,18 @@ namespace sf
                  
     private:
         //FLS specific
-        FLS* sonar;
-        std::vector<SonarView> views;
-        GLuint nBeams;
-        GLuint nViewBeams;
-        GLuint nBins;
-        GLuint nBeamSamples;
-        glm::vec2 noise;
+        FLS* sonar_;
+        std::vector<SonarView> views_;
+        GLuint nBeams_;
+        GLuint nViewBeams_;
+        GLuint nBins_;
+        GLuint nBeamSamples_;
+        glm::vec2 noise_;
         //OpenGL
-        GLuint outputTex[2];
-        GLuint fanDiv;
-        GLSLShader* sonarOutputShader;
-        GLSLShader* sonarPostprocessShader;
+        GLuint outputTex_[2];
+        GLuint fanDiv_;
+        GLSLShader* sonarOutputShader_;
+        GLSLShader* sonarPostprocessShader_;
     };
 }
 

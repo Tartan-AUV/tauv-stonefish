@@ -20,7 +20,7 @@
 //  Stonefish
 //
 //  Created by Patryk Cieslak on 20/06/20.
-//  Copyright (c) 2020-2024 Patryk Cieslak. All rights reserved.
+//  Copyright (c) 2020-2025 Patryk Cieslak. All rights reserved.
 //
 
 #ifndef __Stonefish_OpenGLSSS__
@@ -48,11 +48,12 @@ namespace sf
          \param numOfBins the number of sonar range bins
          \param numOfLines the length of the waterfall display memory
          \param verticalTiltDeg the angle between the horizon and the transducer axis [deg]
-         \param range_ the distance to the closest and farthest recorded object [m]
+         \param range the distance to the closest and farthest recorded object [m]
+         \param outputFormat the format of the sonar output data
          */
         OpenGLSSS(glm::vec3 centerPosition, glm::vec3 direction, glm::vec3 forward,
                   GLfloat verticalBeamWidthDeg, GLfloat horizontalBeamWidthDeg, 
-                  GLuint numOfBins, GLuint numOfLines, GLfloat verticalTiltDeg, glm::vec2 range_);
+                  GLuint numOfBins, GLuint numOfLines, GLfloat verticalTiltDeg, glm::vec2 range, SonarOutputFormat outputFormat);
         
         //! A destructor.
         ~OpenGLSSS();
@@ -87,17 +88,17 @@ namespace sf
         
     protected:
         //SSS specific
-        SSS* sonar;
-        GLfloat tilt;
-        glm::uvec2 nBeamSamples;
-        glm::vec2 noise;
-        glm::mat4 views[2];
+        SSS* sonar_;
+        GLfloat tilt_;
+        glm::uvec2 nBeamSamples_;
+        glm::vec2 noise_;
+        glm::mat4 views_[2];
         
         //OpenGL
-        GLuint outputTex[3];
-        GLint pingpong;
-        GLSLShader* sonarOutputShader[2];
-        GLSLShader* sonarShiftShader;
+        GLuint outputTex_[3];
+        GLint pingpong_;
+        GLSLShader* sonarOutputShader_[2];
+        GLSLShader* sonarShiftShader_;
     };
 }
 

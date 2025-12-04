@@ -34,7 +34,7 @@ namespace sf
 {
 
 FLS::FLS(std::string uniqueName, unsigned int numOfBeams, unsigned int numOfBins, Scalar horizontalFOVDeg, 
-    Scalar verticalFOVDeg, Scalar minRange, Scalar maxRange, ColorMap cm, Scalar frequency)
+    Scalar verticalFOVDeg, Scalar minRange, Scalar maxRange, ColorMap cm, SonarOutputFormat outputFormat, Scalar frequency)
     : Camera(uniqueName, numOfBeams, numOfBins, horizontalFOVDeg, frequency)
 {
     range.x = 0.f;
@@ -45,6 +45,7 @@ FLS::FLS(std::string uniqueName, unsigned int numOfBeams, unsigned int numOfBins
     gain = Scalar(1);
     fovV = verticalFOVDeg <= Scalar(0) ? Scalar(20) : (verticalFOVDeg > Scalar(179) ? Scalar(179) : verticalFOVDeg);
     cMap = cm;
+    outputFormat_ = outputFormat;
     sonarData = NULL;
     displayData = NULL;
     newDataCallback = NULL;
@@ -116,6 +117,11 @@ Scalar FLS::getGain() const
 {
     return gain;
 }
+
+SonarOutputFormat FLS::getOutputFormat() const
+{
+    return outputFormat_;
+}
     
 VisionSensorType FLS::getVisionSensorType() const
 {
@@ -130,7 +136,7 @@ OpenGLView* FLS::getOpenGLView() const
 void FLS::InitGraphics()
 {
     glFLS = new OpenGLFLS(glm::vec3(0,0,0), glm::vec3(0,0,1.f), glm::vec3(0,-1.f,0), 
-                          (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, range);
+                          (GLfloat)fovH, (GLfloat)fovV, (GLint)resX, (GLint)resY, range, outputFormat_);
     glFLS->setNoise(noise);
     glFLS->setSonar(this);
     glFLS->setColorMap(cMap);
@@ -169,7 +175,7 @@ void FLS::NewDataReady(void* data, unsigned int index)
         }
         else
         {
-            sonarData = (GLubyte*)data;
+            sonarData = data;
             newDataCallback(this);
             sonarData = NULL;
         }
