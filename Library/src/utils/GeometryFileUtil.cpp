@@ -26,6 +26,8 @@
 #include "utils/GeometryFileUtil.h"
 
 #include <algorithm>
+#include <array>
+#include <fstream>
 #include "core/SimulationApp.h"
 #include "utils/SystemUtil.hpp"
 
@@ -245,54 +247,191 @@ Mesh* LoadOBJ(const std::string& path, GLfloat scale)
     return mesh_;
 }
 
+namespace
+{
+    Mesh* LoadAsciiSTL(const std::string& path, GLfloat scale)
+    {
+        FILE* file = fopen(path.c_str(), "rb");   
+        
+        if(file == NULL)
+        {
+            cCritical("Failed to open geometry file: %s", path.c_str());
+            return nullptr;
+        }
+        
+        cInfo("Loading geometry from: %s", path.c_str());
+        
+        char line[128];
+        char keyword[10];
+        PlainMesh* mesh = new PlainMesh;
+        Vertex v;
+        
+        while(fgets(line, 128, file))
+        {
+            sscanf(line, "%s", keyword);
+            
+            if(strcmp(keyword, "facet")==0)
+            {
+                sscanf(line, " facet normal %f %f %f\n", &v.normal.x, &v.normal.y, &v.normal.z);
+            }
+            else if(strcmp(keyword, "vertex")==0)
+            {
+                sscanf(line, " vertex %f %f %f\n", &v.pos.x, &v.pos.y, &v.pos.z);
+                v.pos *= scale;
+                mesh->vertices.push_back(v);
+            }
+            else if(strcmp(keyword, "endfacet")==0)
+            {
+                unsigned int lastVertexID = (GLuint)mesh->vertices.size()-1;
+                
+                Face f;
+                f.vertexID[0] = lastVertexID-2;
+                f.vertexID[1] = lastVertexID-1;
+                f.vertexID[2] = lastVertexID;
+                mesh->faces.push_back(f);
+            }
+        }
+        
+        fclose(file);
+        
+        //Remove duplicates (so that it becomes equivalent to OBJ file representation)
+        
+        return mesh;
+    }
+
+    Mesh* LoadBinarySTL(const std::string& path, GLfloat scale)
+    {
+        std::ifstream file(path, std::ios::binary);
+
+        if(!file)
+        {
+            cCritical("Failed to open geometry file: %s", path.c_str());
+            return nullptr;
+        }
+
+        //Read header
+        std::array<char, 80> header{};
+        file.read(header.data(), header.size());
+
+        uint32_t triangleCount = 0;
+        file.read(reinterpret_cast<char*>(&triangleCount), sizeof(triangleCount));
+
+        if(!file)
+        {
+            cCritical("Failed to read binary STL header: %s", path.c_str());
+            return nullptr;
+        }
+
+        cInfo("Loading geometry from: %s", path.c_str());
+
+        PlainMesh* mesh = new PlainMesh;
+        mesh->vertices.reserve((size_t)triangleCount * 3);
+        mesh->faces.reserve(triangleCount);
+
+        int64_t start = GetTimeInMicroseconds();
+
+        for(uint32_t i = 0; i < triangleCount; ++i)
+        {
+            float normal[3];
+            float vertices[9];
+            uint16_t attribute = 0;
+
+            file.read(reinterpret_cast<char*>(normal), sizeof(normal));
+            file.read(reinterpret_cast<char*>(vertices), sizeof(vertices));
+            file.read(reinterpret_cast<char*>(&attribute), sizeof(attribute));
+
+            if(!file)
+            {
+                cError("Failed to read triangle %u from binary STL: %s", i, path.c_str());
+                delete mesh;
+                return nullptr;
+            }
+
+            glm::vec3 normalVec(normal[0], normal[1], normal[2]);
+            GLuint baseIndex = (GLuint)mesh->vertices.size();
+
+            for(int v = 0; v < 3; ++v)
+            {
+                Vertex vert;
+                vert.normal = normalVec;
+                vert.pos = glm::vec3(vertices[v*3], vertices[v*3 + 1], vertices[v*3 + 2]) * scale;
+                mesh->vertices.push_back(vert);
+            }
+
+            Face face;
+            face.vertexID[0] = baseIndex;
+            face.vertexID[1] = baseIndex + 1;
+            face.vertexID[2] = baseIndex + 2;
+            mesh->faces.push_back(face);
+        }
+
+        int64_t end = GetTimeInMicroseconds();
+        cInfo("Loaded mesh with %ld faces in %ld ms.", mesh->faces.size(), (end-start)/1000);
+
+        return mesh;
+    }
+}
+
 Mesh* LoadSTL(const std::string& path, GLfloat scale)
 {
-    //Read STL data
-    FILE* file = fopen(path.c_str(), "rb");   
-    
-    if(file == NULL)
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+
+    if(!file)
     {
         cCritical("Failed to open geometry file: %s", path.c_str());
         return nullptr;
     }
-    
-    cInfo("Loading geometry from: %s", path.c_str());
-    
-    char line[128];
-    char keyword[10];
-    PlainMesh* mesh = new PlainMesh;
-    Vertex v;
-    
-    while(fgets(line, 128, file))
+
+    std::streampos fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    if(fileSize < 0)
     {
-        sscanf(line, "%s", keyword);
-        
-        if(strcmp(keyword, "facet")==0)
-        {
-            sscanf(line, " facet normal %f %f %f\n", &v.normal.x, &v.normal.y, &v.normal.z);
-        }
-        else if(strcmp(keyword, "vertex")==0)
-        {
-            sscanf(line, " vertex %f %f %f\n", &v.pos.x, &v.pos.y, &v.pos.z);
-            v.pos *= scale;
-            mesh->vertices.push_back(v);
-        }
-        else if(strcmp(keyword, "endfacet")==0)
-        {
-            unsigned int lastVertexID = (GLuint)mesh->vertices.size()-1;
-            
-            Face f;
-            f.vertexID[0] = lastVertexID-2;
-            f.vertexID[1] = lastVertexID-1;
-            f.vertexID[2] = lastVertexID;
-            mesh->faces.push_back(f);
-        }
+        cCritical("Failed to read geometry file size: %s", path.c_str());
+        return nullptr;
     }
-    
-    fclose(file);
-    
-    //Remove duplicates (so that it becomes equivalent to OBJ file representation)
-    
+
+    if(fileSize < 84) //Smaller than binary STL header, assume ASCII
+    {
+        file.close();
+        return LoadAsciiSTL(path, scale);
+    }
+
+    std::array<char, 80> header{};
+    file.read(header.data(), header.size());
+
+    uint32_t triangleCount = 0;
+    file.read(reinterpret_cast<char*>(&triangleCount), sizeof(triangleCount));
+
+    if(!file)
+    {
+        cCritical("Failed to read STL header: %s", path.c_str());
+        return nullptr;
+    }
+
+    std::string headerPrefix(header.data(), header.data()+5);
+    bool headerIsSolid = headerPrefix == "solid";
+    std::streamoff expectedSize = static_cast<std::streamoff>(84) + static_cast<std::streamoff>(triangleCount) * 50;
+    std::streamoff sizeDiff = static_cast<std::streamoff>(fileSize) - expectedSize;
+    bool likelyBinary = (triangleCount > 0) && (expectedSize > 84) && (sizeDiff >= 0) && (sizeDiff < 1024);
+    file.close();
+
+    Mesh* mesh = nullptr;
+    if(headerIsSolid && !likelyBinary)
+    {
+        mesh = LoadAsciiSTL(path, scale);
+    }
+    else
+    {
+        mesh = LoadBinarySTL(path, scale);
+    }
+
+    if(mesh == nullptr && headerIsSolid) //Fallback if mis-detected binary STL with "solid" header
+        mesh = LoadAsciiSTL(path, scale);
+
+    if(mesh == nullptr)
+        cError("Failed to load STL geometry: %s", path.c_str());
+
     return mesh;
 }
 
