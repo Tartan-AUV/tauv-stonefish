@@ -32,7 +32,7 @@ namespace sf
 {
     //! An enum defining types of views.
     enum class ViewType {CAMERA, TRACKBALL, DEPTH_CAMERA, THERMAL_CAMERA, 
-                            EVENT_BASED_CAMERA, OPTICAL_FLOW_CAMERA, SEGMENTATION_CAMERA, SONAR};
+                            EVENT_BASED_CAMERA, OPTICAL_FLOW_CAMERA, SEGMENTATION_CAMERA, SONAR, FISHEYE_CAMERA};
 
     #pragma pack(1)
     struct ViewUBO

@@ -34,6 +34,7 @@
 #include "graphics/OpenGLTrackball.h"
 #include "graphics/OpenGLCamera.h"
 #include "graphics/OpenGLRealCamera.h"
+#include "graphics/OpenGLFisheyeCamera.h"
 #include "graphics/OpenGLDepthCamera.h"
 #include "graphics/OpenGLThermalCamera.h"
 #include "graphics/OpenGLOpticalFlowCamera.h"
@@ -63,6 +64,7 @@ OpenGLPipeline::OpenGLPipeline(RenderSettings s, HelperSettings h) : rSettings(s
     OpenGLAtmosphere::Init();
     OpenGLCamera::Init(rSettings);
     OpenGLDepthCamera::Init();
+    OpenGLFisheyeCamera::Init();
     OpenGLThermalCamera::Init();
     OpenGLOpticalFlowCamera::Init();
     OpenGLSegmentationCamera::Init();
@@ -94,6 +96,7 @@ OpenGLPipeline::~OpenGLPipeline()
 {
     OpenGLCamera::Destroy();
     OpenGLDepthCamera::Destroy();
+    OpenGLFisheyeCamera::Destroy();
     OpenGLThermalCamera::Destroy();
     OpenGLOpticalFlowCamera::Destroy();
     OpenGLSegmentationCamera::Destroy();
@@ -560,6 +563,14 @@ void OpenGLPipeline::Render(SimulationManager* sim)
                 sonar->ComputeOutput(drawingQueueCopy);
                 //Draw sonar output
                 sonar->DrawLDR(screenFBO, true);
+            }
+            break;
+
+            case ViewType::FISHEYE_CAMERA:
+            {
+                OpenGLFisheyeCamera* camera = static_cast<OpenGLFisheyeCamera*>(view);
+                camera->ComputeOutput(drawingQueueCopy, ocean);
+                camera->DrawLDR(screenFBO, true);
             }
             break;
 
