@@ -1951,7 +1951,41 @@ bool ScenarioParser::ParseSolid(XMLElement* element, SolidEntity*& solid, std::s
             if(item->QueryStringAttribute("viscous_drag", &xyz) == XML_SUCCESS)
                 ParseVector(xyz, Cf);
             if(item->QueryStringAttribute("quadratic_drag", &xyz) == XML_SUCCESS)
-                ParseVector(xyz, Cd);  
+                ParseVector(xyz, Cd);
+            item->QueryBoolAttribute("compute_added_mass", &phy.estimateHydrodynamics);
+            Scalar volOverride;
+            if(item->QueryAttribute("volume", &volOverride) == XML_SUCCESS && volOverride > Scalar(0))
+            {
+                phy.useCustomVolume = true;
+                phy.customVolume = volOverride;
+            }
+            if(item->QueryStringAttribute("cb", &xyz) == XML_SUCCESS)
+            {
+                if(ParseVector(xyz, phy.customCB))
+                    phy.useCustomCB = true;
+                else
+                    log.Print(MessageType::WARNING, "Hydrodynamics of rigid body '%s': failed to parse CB override.", solidName.c_str());
+            }
+            if(item->QueryStringAttribute("added_mass", &xyz) == XML_SUCCESS)
+            {
+                if(ParseVector(xyz, phy.customAddedMass))
+                {
+                    phy.useCustomAddedMass = true;
+                    phy.estimateHydrodynamics = false;
+                }
+                else
+                    log.Print(MessageType::WARNING, "Hydrodynamics of rigid body '%s': failed to parse added mass.", solidName.c_str());
+            }
+            if(item->QueryStringAttribute("added_inertia", &xyz) == XML_SUCCESS)
+            {
+                if(ParseVector(xyz, phy.customAddedInertia))
+                {
+                    phy.useCustomAddedInertia = true;
+                    phy.estimateHydrodynamics = false;
+                }
+                else
+                    log.Print(MessageType::WARNING, "Hydrodynamics of rigid body '%s': failed to parse added inertia.", solidName.c_str());
+            }
         } 
 
         //Origin    

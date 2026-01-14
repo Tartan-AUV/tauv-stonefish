@@ -232,6 +232,13 @@ namespace sf
          \param Cf a vector of skin friction (viscous drag) coefficients
          */
         void SetHydrodynamicCoefficients(const Vector3& Cd, const Vector3& Cf);
+        
+        //! A method used to override hydrodynamic added mass and inertia.
+        /*!
+         \param addedMass a vector of added mass values
+         \param addedInertia a vector of added inertia values
+         */
+        void SetAddedMass(const Vector3& addedMass, const Vector3& addedInertia);
 
         //! A method to set the body pose in the world frame.
         void setCGTransform(const Transform& trans);
@@ -389,6 +396,9 @@ namespace sf
         void ComputeSphericalApprox();
         void ComputeCylindricalApprox();
         void ComputeEllipsoidalApprox();
+        void SetupHydrodynamics(GeometryApproxType t);
+        void ApplyAddedMassOverrides();
+        void ApplyBuoyancyOverrides();
         
         Scalar LambKFactor(Scalar r1, Scalar r2);
         virtual void BuildRigidBody(btDynamicsWorld* world);

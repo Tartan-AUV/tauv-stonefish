@@ -58,8 +58,7 @@ Wing::Wing(std::string uniqueName, PhysicsSettings phy, Scalar baseChordLength, 
     T_CG2G = T_CG2O * T_O2G;
     
     //3. Compute hydrodynamic properties
-    ComputeFluidDynamicsApprox(GeometryApproxType::ELLIPSOID);
-    T_O2H = T_CG2O.inverse() * T_CG2H;
+    SetupHydrodynamics(GeometryApproxType::ELLIPSOID);
     P_CB = Vector3(0,0,0);
 }
     
@@ -111,8 +110,7 @@ Wing::Wing(std::string uniqueName, PhysicsSettings phy, Scalar baseChordLength, 
     T_CG2G = T_CG2O * T_O2G;
 
     //4. Compute hydrodynamic properties
-    ComputeFluidDynamicsApprox(GeometryApproxType::ELLIPSOID);
-    T_O2H = T_CG2O.inverse() * T_CG2H;
+    SetupHydrodynamics(GeometryApproxType::ELLIPSOID);
     P_CB = Vector3(0,0,0);
 }
     

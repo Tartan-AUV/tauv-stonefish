@@ -197,6 +197,17 @@ void SolidEntity::SetHydrodynamicCoefficients(const Vector3& Cd, const Vector3& 
         fdCf = Cf;
 }
 
+void SolidEntity::SetAddedMass(const Vector3& addedMass, const Vector3& addedInertia)
+{
+    aMass = addedMass;
+    aI = addedInertia;
+    phy.useCustomAddedMass = true;
+    phy.useCustomAddedInertia = true;
+    phy.customAddedMass = addedMass;
+    phy.customAddedInertia = addedInertia;
+    phy.estimateHydrodynamics = false;
+}
+
 int SolidEntity::getPhysicalObject() const
 {
     return phyObjectId;
@@ -357,30 +368,49 @@ std::vector<Renderable> SolidEntity::Render()
         items.push_back(debugItem);
 #else
         //Geometry approximation
-        Renderable item7;
-        item7.model = glMatrixFromTransform(getHTransform());
-        item7.data = std::make_shared<std::vector<glm::vec3>>();
-        points = item7.getDataAsPoints();
-
+        //Hydrodynamic proxy; skip if approximation is unavailable (e.g., estimation disabled)
+        bool hasApproxParams = false;
         switch(fdApproxType)
-        {    
+        {
             case GeometryApproxType::SPHERE:
-                item7.type = RenderableType::HYDRO_ELLIPSOID;
-                points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0]));
+                hasApproxParams = fdApproxParams.size() >= 1;
                 break;
-                
             case GeometryApproxType::CYLINDER:
-                item7.type = RenderableType::HYDRO_CYLINDER;
-                points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[1]));
+                hasApproxParams = fdApproxParams.size() >= 2;
                 break;
-
-            case GeometryApproxType::AUTO:       
+            case GeometryApproxType::AUTO:
             case GeometryApproxType::ELLIPSOID:
-                item7.type = RenderableType::HYDRO_ELLIPSOID;
-                points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[1], (GLfloat)fdApproxParams[2]));
+                hasApproxParams = fdApproxParams.size() >= 3;
                 break;
         }
-        items.push_back(item7);
+
+        if(hasApproxParams)
+        {
+            Renderable item7;
+            item7.model = glMatrixFromTransform(getHTransform());
+            item7.data = std::make_shared<std::vector<glm::vec3>>();
+            points = item7.getDataAsPoints();
+
+            switch(fdApproxType)
+            {    
+                case GeometryApproxType::SPHERE:
+                    item7.type = RenderableType::HYDRO_ELLIPSOID;
+                    points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0]));
+                    break;
+                    
+                case GeometryApproxType::CYLINDER:
+                    item7.type = RenderableType::HYDRO_CYLINDER;
+                    points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[1]));
+                    break;
+
+                case GeometryApproxType::AUTO:       
+                case GeometryApproxType::ELLIPSOID:
+                    item7.type = RenderableType::HYDRO_ELLIPSOID;
+                    points->push_back(glm::vec3((GLfloat)fdApproxParams[0], (GLfloat)fdApproxParams[1], (GLfloat)fdApproxParams[2]));
+                    break;
+            }
+            items.push_back(item7);
+        }
 #endif
     }
     
@@ -693,6 +723,44 @@ std::vector<Vector3>* SolidEntity::getMeshVertices() const
         }
     }
     return vertices;
+}
+
+void SolidEntity::ApplyAddedMassOverrides()
+{
+    if(phy.useCustomAddedMass)
+        aMass = phy.customAddedMass;
+    if(phy.useCustomAddedInertia)
+        aI = phy.customAddedInertia;
+}
+
+void SolidEntity::ApplyBuoyancyOverrides()
+{
+    if(phy.useCustomVolume && phy.customVolume > Scalar(0))
+        volume = phy.customVolume;
+    if(phy.useCustomCB)
+        P_CB = phy.customCB;
+}
+
+void SolidEntity::SetupHydrodynamics(GeometryApproxType t)
+{
+    if(phy.estimateHydrodynamics)
+    {
+        ComputeFluidDynamicsApprox(t);
+    }
+    else
+    {
+        fdApproxType = GeometryApproxType::AUTO;
+        fdApproxParams.clear();
+        T_CG2H = Transform::getIdentity();
+        if(fdCd.getX() < Scalar(0) || fdCd.getY() < Scalar(0) || fdCd.getZ() < Scalar(0))
+            fdCd = Vector3(1,1,1);
+        if(fdCf.getX() < Scalar(0) || fdCf.getY() < Scalar(0) || fdCf.getZ() < Scalar(0))
+            fdCf = Vector3(Scalar(0.1), Scalar(0.1), Scalar(0.1));
+    }
+
+    T_O2H = T_CG2O.inverse() * T_CG2H;
+    ApplyAddedMassOverrides();
+    ApplyBuoyancyOverrides();
 }
 
 void SolidEntity::ComputeFluidDynamicsApprox(GeometryApproxType t)

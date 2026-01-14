@@ -72,7 +72,7 @@ Box::Box(std::string uniqueName, PhysicsSettings phy, const Vector3& dimensions,
 	phyMesh = OpenGLContent::BuildBox(glHalfExtents, 3, uvMode);
     
     //Compute hydrodynamic properties
-    ComputeFluidDynamicsApprox( GeometryApproxType::ELLIPSOID);
+    SetupHydrodynamics( GeometryApproxType::ELLIPSOID);
     //dragCoeff = Vector3(halfExtents.y()*halfExtents.z()*Scalar(4*1.05), halfExtents.x()*halfExtents.z()*Scalar(4*1.05), halfExtents.y()*halfExtents.x()*Scalar(4*1.05));
 }
 

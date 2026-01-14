@@ -269,6 +269,7 @@ void Compound::RecalculatePhysicalProperties()
     volume = compoundVolume;
     surface = compoundSurface;
     Ipri = compoundPriInertia;
+    ApplyBuoyancyOverrides();
 }
 
 btCollisionShape* Compound::BuildCollisionShape()

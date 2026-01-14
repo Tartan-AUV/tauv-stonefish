@@ -63,7 +63,7 @@ Sphere::Sphere(std::string uniqueName, PhysicsSettings phy, Scalar radius, const
     phyMesh = OpenGLContent::BuildSphere((GLfloat)r);
     
     //Compute hydrodynamic properties
-    ComputeFluidDynamicsApprox( GeometryApproxType::SPHERE);
+    SetupHydrodynamics( GeometryApproxType::SPHERE);
     //dragCoeff = Vector3(Scalar(0.47)*M_PI*radius*radius, Scalar(0.47)*M_PI*radius*radius, Scalar(0.47)*M_PI*radius*radius);
 }
 

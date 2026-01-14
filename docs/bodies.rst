@@ -138,6 +138,49 @@ It is possible to override some automatically estimated hydrodynamic coeffcients
     sf::SolidEntity* solid = ...;
     solid->SetHydrodynamicCoefficients(sf::Vector3(0.2, 0.6, 0.6), sf::Vector3(0.05, 0.08, 0.08));
 
+Skipping added mass estimation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ellipsoidal approximation used for added mass can be expensive for complex meshes. It can be disabled and the added mass values overridden manually:
+
+.. code-block:: xml
+
+    <dynamic>
+        <!-- all standard definitions -->
+        <hydrodynamics compute_added_mass="false" added_mass="5.0 6.0 6.0" added_inertia="0.0 0.2 0.2"/>
+    </dynamic>
+
+.. code-block:: cpp
+
+    sf::PhysicsSettings phy;
+    phy.estimateHydrodynamics = false; // skips geometry-based estimation
+    phy.useCustomAddedMass = true;
+    phy.useCustomAddedInertia = true;
+    phy.customAddedMass = sf::Vector3(5.0, 6.0, 6.0);
+    phy.customAddedInertia = sf::Vector3(0.0, 0.2, 0.2);
+    sf::SolidEntity* solid = ...;
+    solid->SetAddedMass(sf::Vector3(5.0, 6.0, 6.0), sf::Vector3(0.0, 0.2, 0.2));
+
+Overriding buoyancy volume and CB
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can override the computed displaced volume and the center of buoyancy (in the CG frame) when needed:
+
+.. code-block:: xml
+
+    <dynamic>
+        <!-- all standard definitions -->
+        <hydrodynamics volume="0.012" cb="0.0 0.0 -0.02"/>
+    </dynamic>
+
+.. code-block:: cpp
+
+    sf::PhysicsSettings phy;
+    phy.useCustomVolume = true;
+    phy.customVolume = 0.012;          // [m^3]
+    phy.useCustomCB = true;
+    phy.customCB = sf::Vector3(0.0, 0.0, -0.02); // in CG frame
+
 Parametric solids
 =================
 

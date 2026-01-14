@@ -62,8 +62,19 @@ namespace sf
         PhysicsMode mode;
         bool collisions;
         bool buoyancy;
+        bool estimateHydrodynamics;
+        bool useCustomAddedMass;
+        bool useCustomAddedInertia;
+        Vector3 customAddedMass;
+        Vector3 customAddedInertia;
+        bool useCustomVolume;
+        bool useCustomCB;
+        Scalar customVolume;
+        Vector3 customCB;
 
-        PhysicsSettings() : mode(PhysicsMode::SUBMERGED), collisions(true), buoyancy(true)
+        PhysicsSettings() : mode(PhysicsMode::SUBMERGED), collisions(true), buoyancy(true), estimateHydrodynamics(true),
+            useCustomAddedMass(false), useCustomAddedInertia(false), customAddedMass(Vector3(0,0,0)), customAddedInertia(Vector3(0,0,0)),
+            useCustomVolume(false), useCustomCB(false), customVolume(0), customCB(Vector3(0,0,0))
         {
         }
     };
