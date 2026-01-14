@@ -20,7 +20,7 @@
 #version 330
 
 uniform samplerCube texCube;
-uniform float focal;    // pixels per radian (equidistant)
+uniform float focal;    // normalized focal (1/maxTheta)
 uniform float maxTheta; // half-FOV in radians (<= pi/2 for 180 deg total)
 
 in vec2 texcoord;
@@ -33,7 +33,7 @@ void main()
     if(r > 1.0)
         discard;
 
-    float theta = r / focal;
+    float theta = r / focal; // theta in radians; focal is normalized so this is r * maxTheta
     if(theta > maxTheta)
         discard;
 

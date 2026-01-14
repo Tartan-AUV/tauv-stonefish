@@ -63,7 +63,7 @@ OpenGLFisheyeCamera::OpenGLFisheyeCamera(glm::vec3 eyePosition, glm::vec3 direct
     near = 0.05f;
     far = 200.f;
     fov = glm::clamp(horizontalFovDeg/180.f * (GLfloat)M_PI, 0.1f, (GLfloat)M_PI);
-    focal = ((GLfloat)viewportWidth * 0.5f) / (0.5f * fov); // equidistant: r = f * theta
+    focal = 1.0f / (0.5f * fov); // normalized focal: theta = r * fov/2
 
     cubeSize = std::max(viewportWidth, viewportHeight);
 
