@@ -32,7 +32,7 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 fragNormal;
 
 uniform sampler2DArray texWaveFFT;
-uniform sampler3D texSlopeVariance; 
+uniform sampler3D texSlopeVariance;
 uniform vec2 viewport;
 uniform vec4 gridSizes;
 uniform vec3 eyePos;

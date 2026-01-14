@@ -38,6 +38,7 @@ FisheyeCamera::FisheyeCamera(std::string uniqueName, unsigned int resolutionX, u
     imageData = nullptr;
     newDataCallback = nullptr;
     glCamera = nullptr;
+    exposure = Scalar(0.00015);
 }
 
 FisheyeCamera::~FisheyeCamera()
@@ -48,6 +49,18 @@ FisheyeCamera::~FisheyeCamera()
 void FisheyeCamera::InstallNewDataHandler(std::function<void(FisheyeCamera*)> callback)
 {
     newDataCallback = callback;
+}
+
+void FisheyeCamera::setExposure(Scalar exp)
+{
+    exposure = exp;
+    if(glCamera != nullptr)
+        glCamera->SetExposure((GLfloat)exposure);
+}
+
+Scalar FisheyeCamera::getExposure() const
+{
+    return exposure;
 }
 
 void* FisheyeCamera::getImageDataPointer(unsigned int index)
@@ -79,6 +92,7 @@ void FisheyeCamera::InitGraphics()
 {
     glCamera = new OpenGLFisheyeCamera(glm::vec3(0,0,0), glm::vec3(0,0,1.f), glm::vec3(0,-1.f,0), 0, 0, resX, resY, (GLfloat)fovH, freq < Scalar(0));
     glCamera->setCamera(this);
+    glCamera->SetExposure((GLfloat)exposure);
     UpdateTransform();
     glCamera->UpdateTransform();
     InternalUpdate(0);

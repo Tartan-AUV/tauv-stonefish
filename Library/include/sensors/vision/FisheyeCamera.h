@@ -53,6 +53,15 @@ namespace sf
          \param callback the callback to call when a new frame is ready
          */
         void InstallNewDataHandler(std::function<void(FisheyeCamera*)> callback);
+
+        //! A method to set exposure used for HDR-to-LDR conversion.
+        /*!
+         \param exp exposure scalar (applied before tonemapping)
+         */
+        void setExposure(Scalar exp);
+
+        //! A method returning the exposure scalar.
+        Scalar getExposure() const;
         
         //! A method returning the pointer to the image data.
         /*!
@@ -77,6 +86,7 @@ namespace sf
     private:
         std::function<void(FisheyeCamera*)> newDataCallback;
         GLubyte* imageData;
+        Scalar exposure;
         class OpenGLFisheyeCamera* glCamera;
     };
 }

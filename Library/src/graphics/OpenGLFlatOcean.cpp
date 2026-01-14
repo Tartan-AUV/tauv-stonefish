@@ -43,9 +43,11 @@ OpenGLFlatOcean::OpenGLFlatOcean(GLfloat size) : OpenGLOcean(200000.f)
 
     GLint compiled;
     GLuint pcssFragment = GLSLShader::LoadShader(GL_FRAGMENT_SHADER, "lighting.frag", "", &compiled);
+    GLuint shadingModelFragment = GLSLShader::LoadShader(GL_FRAGMENT_SHADER, "blinnPhong.frag", "", &compiled);
 	std::vector<GLuint> precompiled;
     precompiled.push_back(OpenGLAtmosphere::getAtmosphereAPI());
     precompiled.push_back(pcssFragment);
+    precompiled.push_back(shadingModelFragment);
 
     //Surface rendering
     std::vector<GLSLSource> sources;
@@ -109,7 +111,8 @@ OpenGLFlatOcean::OpenGLFlatOcean(GLfloat size) : OpenGLOcean(200000.f)
     
     //Backsurface rendering
 	GLuint oceanOpticsFragment = GLSLShader::LoadShader(GL_FRAGMENT_SHADER, "oceanOptics.frag", "", &compiled);
-    precompiled.pop_back();
+    precompiled.pop_back(); // shadingModelFragment
+    precompiled.pop_back(); // pcssFragment
     precompiled.push_back(oceanOpticsFragment);
 
     sources.pop_back();

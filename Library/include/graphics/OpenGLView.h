@@ -110,7 +110,7 @@ namespace sf
         void SetViewport();
         
         //! A method that returns the viewport origin and size.
-        GLint* GetViewport() const;
+        virtual GLint* GetViewport() const;
         
         //! A method returning the rendering framebuffer of the view.
         GLuint getRenderFBO() const;

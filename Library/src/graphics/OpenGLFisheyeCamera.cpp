@@ -30,8 +30,11 @@
 #include "graphics/OpenGLPipeline.h"
 #include "graphics/OpenGLState.h"
 #include "graphics/OpenGLDataStructs.h"
+#include "graphics/OpenGLAtmosphere.h"
+#include "core/SimulationManager.h"
 #include "sensors/vision/FisheyeCamera.h"
 #include "entities/SolidEntity.h"
+#include "entities/forcefields/Atmosphere.h"
 #include "entities/forcefields/Ocean.h"
 #include "utils/SystemUtil.hpp"
 
@@ -39,6 +42,7 @@ namespace sf
 {
 
 GLSLShader* OpenGLFisheyeCamera::warpShader = nullptr;
+GLSLShader* OpenGLFisheyeCamera::flipShader = nullptr;
 
 OpenGLFisheyeCamera::OpenGLFisheyeCamera(glm::vec3 eyePosition, glm::vec3 direction, glm::vec3 cameraUp,
                                          GLint x, GLint y, GLint width, GLint height,
@@ -59,11 +63,15 @@ OpenGLFisheyeCamera::OpenGLFisheyeCamera(glm::vec3 eyePosition, glm::vec3 direct
     currentView = glm::mat4(1.f);
     currentProj = glm::mat4(1.f);
     continuous = continuousUpdate;
+    viewportOverrideEnabled = false;
+    viewportOverrideW = viewportWidth;
+    viewportOverrideH = viewportHeight;
 
     near = 0.05f;
     far = 200.f;
     fov = glm::clamp(horizontalFovDeg/180.f * (GLfloat)M_PI, 0.1f, (GLfloat)M_PI);
     focal = 1.0f / (0.5f * fov); // normalized focal: theta = r * fov/2
+    exposure = 0.00015f;
 
     cubeSize = std::max(viewportWidth, viewportHeight);
 
@@ -124,6 +132,9 @@ OpenGLFisheyeCamera::~OpenGLFisheyeCamera()
 
 void OpenGLFisheyeCamera::Init()
 {
+    // Improve continuity across cubemap face boundaries for linear filtering.
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
     if(warpShader == nullptr)
     {
         std::vector<GLSLSource> sources;
@@ -133,6 +144,14 @@ void OpenGLFisheyeCamera::Init()
         warpShader->AddUniform("texCube", ParameterType::INT);
         warpShader->AddUniform("focal", ParameterType::FLOAT);
         warpShader->AddUniform("maxTheta", ParameterType::FLOAT);
+        warpShader->AddUniform("debugMode", ParameterType::INT);
+        warpShader->AddUniform("exposure", ParameterType::FLOAT);
+    }
+
+    if(flipShader == nullptr)
+    {
+        flipShader = new GLSLShader("verticalFlip.frag");
+        flipShader->AddUniform("texSource", ParameterType::INT);
     }
 }
 
@@ -142,6 +161,12 @@ void OpenGLFisheyeCamera::Destroy()
     {
         delete warpShader;
         warpShader = nullptr;
+    }
+
+    if(flipShader != nullptr)
+    {
+        delete flipShader;
+        flipShader = nullptr;
     }
 }
 
@@ -178,6 +203,11 @@ void OpenGLFisheyeCamera::SetupCamera(glm::vec3 _eye, glm::vec3 _dir, glm::vec3 
     tempUp = _up;
 }
 
+void OpenGLFisheyeCamera::SetExposure(GLfloat exp)
+{
+    exposure = exp;
+}
+
 void OpenGLFisheyeCamera::UpdateTransform()
 {
     eye = tempEye;
@@ -187,6 +217,8 @@ void OpenGLFisheyeCamera::UpdateTransform()
     // Update UBO with nominal forward-facing view (used for helpers/culling)
     glm::mat4 V = glm::lookAt(eye, eye + dir, up);
     glm::mat4 P = glm::perspective((GLfloat)M_PI_2, 1.f, near, far);
+    currentDir = glm::normalize(dir);
+    currentUp = glm::normalize(up);
     UpdateViewUBO(V, P);
 
     if(newData && camera != nullptr)
@@ -210,12 +242,12 @@ glm::vec3 OpenGLFisheyeCamera::GetEyePosition() const
 
 glm::vec3 OpenGLFisheyeCamera::GetLookingDirection() const
 {
-    return dir;
+    return currentDir;
 }
 
 glm::vec3 OpenGLFisheyeCamera::GetUpDirection() const
 {
-    return up;
+    return currentUp;
 }
 
 glm::mat4 OpenGLFisheyeCamera::GetProjectionMatrix() const
@@ -248,6 +280,16 @@ GLfloat OpenGLFisheyeCamera::GetFarClip() const
     return far;
 }
 
+GLint* OpenGLFisheyeCamera::GetViewport() const
+{
+    GLint* view = new GLint[4];
+    view[0] = originX;
+    view[1] = originY;
+    view[2] = viewportOverrideEnabled ? viewportOverrideW : viewportWidth;
+    view[3] = viewportOverrideEnabled ? viewportOverrideH : viewportHeight;
+    return view;
+}
+
 void OpenGLFisheyeCamera::UpdateViewUBO(const glm::mat4& V, const glm::mat4& P)
 {
     currentView = V;
@@ -259,6 +301,10 @@ void OpenGLFisheyeCamera::UpdateViewUBO(const glm::mat4& V, const glm::mat4& P)
 
 void OpenGLFisheyeCamera::RenderFace(int faceIndex, std::vector<Renderable>& objects, Ocean* ocean)
 {
+    viewportOverrideEnabled = true;
+    viewportOverrideW = cubeSize;
+    viewportOverrideH = cubeSize;
+
     glm::vec3 faceDir;
     glm::vec3 faceUp;
     switch(faceIndex)
@@ -272,77 +318,186 @@ void OpenGLFisheyeCamera::RenderFace(int faceIndex, std::vector<Renderable>& obj
         default: return;
     }
 
-    glm::mat4 V = glm::lookAt(eye, eye + faceDir, faceUp);
+    // Orient the cubemap with the camera (face directions are defined in the camera local frame).
+    glm::vec3 fwd = glm::normalize(dir);
+    glm::vec3 upN = glm::normalize(up);
+
+    // Construct an orthonormal camera basis in the same handedness as the fisheye ray convention:
+    // local +Z is forward, +X is right, +Y is up (before the final ROS optical vertical flip).
+    glm::vec3 right = glm::normalize(glm::cross(upN, fwd));
+    upN = glm::normalize(glm::cross(fwd, right));
+    auto localToWorld = [&](const glm::vec3& v) -> glm::vec3
+    {
+        return v.x * right + v.y * upN + v.z * fwd;
+    };
+
+    glm::vec3 worldDir = localToWorld(faceDir);
+    glm::vec3 worldUp = localToWorld(faceUp);
+
+    glm::mat4 V = glm::lookAt(eye, eye + worldDir, worldUp);
     glm::mat4 P = glm::perspective((GLfloat)M_PI_2, 1.f, near, far);
+    currentDir = worldDir;
+    currentUp = worldUp;
     UpdateViewUBO(V, P);
 
     OpenGLContent* content = ((GraphicalSimulationApp*)SimulationApp::getApp())->getGLPipeline()->getContent();
     content->SetCurrentView(this);
-    content->SetDrawingMode(DrawingMode::FULL);
+    content->SetViewportSize(cubeSize, cubeSize);
 
     OpenGLState::BindFramebuffer(cubeFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex, cubeTex, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, cubeDepth);
+    glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if(status != GL_FRAMEBUFFER_COMPLETE)
         cError("Fisheye cube face FBO incomplete!");
 
     OpenGLState::Viewport(0, 0, cubeSize, cubeSize);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glClearColor(0.f, 0.f, 0.f, 0.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw opaque objects
-    for(size_t i=0; i<objects.size(); ++i)
+    OpenGLPipeline* pipeline = ((GraphicalSimulationApp*)SimulationApp::getApp())->getGLPipeline();
+    RenderSettings rSettings = pipeline->getRenderSettings();
+    Atmosphere* atm = SimulationApp::getApp()->getSimulationManager()->getAtmosphere();
+
+    bool oceanEnabled = (ocean != nullptr) && ocean->isRenderable() && (rSettings.ocean > RenderQuality::DISABLED);
+    bool underwater = oceanEnabled && (ocean->GetDepth(eye) > 0.f);
+
+    auto drawObjects = [&]()
     {
-        if(objects[i].type == RenderableType::SOLID)
-            content->DrawObject(objects[i].objectId, objects[i].lookId, objects[i].model);
-        else if(objects[i].type == RenderableType::CABLE)
+        for(size_t i=0; i<objects.size(); ++i)
         {
-            auto nodes = objects[i].getDataAsCableNodes();
-            content->DrawCable(objects[i].objectId, objects[i].model[0][0], *nodes, objects[i].lookId);
+            if(objects[i].type == RenderableType::SOLID)
+                content->DrawObject(objects[i].objectId, objects[i].lookId, objects[i].model);
+            else if(objects[i].type == RenderableType::CABLE)
+            {
+                auto nodes = objects[i].getDataAsCableNodes();
+                content->DrawCable(objects[i].objectId, objects[i].model[0][0], *nodes, objects[i].lookId);
+            }
+        }
+    };
+
+    // Render scene with (optional) ocean/atmosphere effects, following the main pipeline structure.
+    if(!oceanEnabled)
+    {
+        content->SetDrawingMode(DrawingMode::FULL);
+        drawObjects();
+
+        if(atm != nullptr)
+            atm->getOpenGLAtmosphere()->DrawSkyAndSun(this);
+    }
+    else
+    {
+        OpenGLOcean* glOcean = ocean->getOpenGLOcean();
+        if(ocean->hasWaves())
+            glOcean->UpdateSurface(this);
+
+        if(underwater)
+        {
+            content->SetDrawingMode(DrawingMode::UNDERWATER);
+            drawObjects();
+
+            glOcean->DrawBackground(this);
+            glOcean->DrawBacksurface(this);
+            glOcean->DrawParticles(this);
+        }
+        else
+        {
+            content->SetDrawingMode(DrawingMode::FULL);
+            drawObjects();
+
+            glOcean->DrawSurface(this);
+
+            if(atm != nullptr)
+                atm->getOpenGLAtmosphere()->DrawSkyAndSun(this);
+
+            if(ocean->hasWaves())
+                glOcean->DrawBacksurface(this);
         }
     }
 
-    // Simple particle pass for ocean if underwater
-    if(ocean != nullptr && ocean->GetDepth(eye) > 0.f)
-    {
-        ocean->getOpenGLOcean()->DrawParticles(this);
-    }
+    viewportOverrideEnabled = false;
 }
 
 void OpenGLFisheyeCamera::ComputeOutput(std::vector<Renderable>& objects, Ocean* ocean)
 {
+    // Ensure atmosphere-dependent UBOs are populated even if no standard camera/trackball is rendered this frame.
+    Atmosphere* atm = SimulationApp::getApp()->getSimulationManager()->getAtmosphere();
+    if(atm != nullptr)
+        atm->getOpenGLAtmosphere()->SetupMaterialShaders();
+
     // Render cube faces
     for(int face=0; face<6; ++face)
         RenderFace(face, objects, ocean);
 
+    int debugMode = 0;
+    if(const char* debugEnv = std::getenv("SF_FISHEYE_DEBUG"))
+        debugMode = std::atoi(debugEnv);
+
+    OpenGLContent* content = ((GraphicalSimulationApp*)SimulationApp::getApp())->getGLPipeline()->getContent();
+    content->SetViewportSize(viewportWidth, viewportHeight);
+
+    if(debugMode == 2)
+    {
+        // Debug output: visualize the cubemap faces as a cross (lets you see each pinhole face).
+        OpenGLState::BindFramebuffer(outputFBO);
+        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+        OpenGLState::Viewport(0, 0, viewportWidth, viewportHeight);
+        OpenGLState::DisableDepthTest();
+        OpenGLState::DisableCullFace();
+        glClearColor(0.f, 0.f, 0.f, 0.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        content->DrawCubemapCross(cubeTex, exposure);
+        OpenGLState::EnableCullFace();
+        OpenGLState::EnableDepthTest();
+        OpenGLState::BindFramebuffer(0);
+    }
+    else
+    {
     // Warp to fisheye
     OpenGLState::BindFramebuffer(outputFBO);
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
     OpenGLState::Viewport(0, 0, viewportWidth, viewportHeight);
+    OpenGLState::DisableDepthTest();
+    OpenGLState::DisableCullFace();
     warpShader->Use();
     warpShader->SetUniform("texCube", TEX_POSTPROCESS1);
     warpShader->SetUniform("focal", focal);
     warpShader->SetUniform("maxTheta", fov * 0.5f);
+    warpShader->SetUniform("debugMode", debugMode);
+    warpShader->SetUniform("exposure", exposure);
     OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_CUBE_MAP, cubeTex);
-    ((GraphicalSimulationApp*)SimulationApp::getApp())->getGLPipeline()->getContent()->DrawSAQ();
+    content->DrawSAQ();
     OpenGLState::BindFramebuffer(0);
     OpenGLState::UnbindTexture(TEX_POSTPROCESS1);
     OpenGLState::UseProgram(0);
+    OpenGLState::EnableCullFace();
+    OpenGLState::EnableDepthTest();
+    }
 
-    // Copy to display texture (vertical flip via quad dimensions)
-    OpenGLContent* content = ((GraphicalSimulationApp*)SimulationApp::getApp())->getGLPipeline()->getContent();
+    // Flip image vertically so published images follow ROS optical convention (X right, Y down).
     OpenGLState::BindFramebuffer(displayFBO);
     OpenGLState::Viewport(0, 0, viewportWidth, viewportHeight);
     glDrawBuffer(GL_COLOR_ATTACHMENT0);
+    OpenGLState::DisableDepthTest();
     OpenGLState::DisableCullFace();
-    content->DrawTexturedQuad(0, viewportHeight, viewportWidth, -viewportHeight, outputTex);
+    OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_2D, outputTex);
+    flipShader->Use();
+    flipShader->SetUniform("texSource", TEX_POSTPROCESS1);
+    content->DrawSAQ();
+    OpenGLState::UseProgram(0);
+    OpenGLState::UnbindTexture(TEX_POSTPROCESS1);
     OpenGLState::EnableCullFace();
+    OpenGLState::EnableDepthTest();
     OpenGLState::BindFramebuffer(0);
 
     // Readback
     if(camera != nullptr)
     {
-        OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_2D, outputTex);
+        OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_2D, displayTex);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, outputPBO);
         glGetTexImage(GL_TEXTURE_2D, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
@@ -367,7 +522,8 @@ void OpenGLFisheyeCamera::DrawLDR(GLuint destinationFBO, bool updated)
         OpenGLState::BindFramebuffer(destinationFBO);
         OpenGLState::Viewport(0, 0, windowWidth, windowHeight);
         OpenGLState::DisableCullFace();
-        content->DrawTexturedQuad(dispX, dispY+viewportHeight*dispScale, viewportWidth*dispScale, -viewportHeight*dispScale, displayTex);
+        content->SetViewportSize(windowWidth, windowHeight);
+        content->DrawTexturedQuad(dispX, dispY, viewportWidth*dispScale, viewportHeight*dispScale, displayTex);
         OpenGLState::EnableCullFace();
         OpenGLState::BindFramebuffer(0);
     }

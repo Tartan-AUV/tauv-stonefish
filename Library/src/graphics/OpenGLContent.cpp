@@ -27,6 +27,7 @@
 
 #include <map>
 #include <algorithm>
+#include <cstdlib>
 #include "core/SimulationApp.h"
 #include "core/SimulationManager.h"
 #include "graphics/OpenGLState.h"
@@ -226,6 +227,7 @@ OpenGLContent::OpenGLContent()
     
     basicShaders["tex_cube"] = new GLSLShader("texCube.frag", "texCube.vert");
     basicShaders["tex_cube"]->AddUniform("tex", ParameterType::INT);
+    basicShaders["tex_cube"]->AddUniform("exposure", ParameterType::FLOAT);
     
     basicShaders["flat"] = new GLSLShader("flat.frag", "flat.vert");
     basicShaders["flat"]->AddUniform("MVP", ParameterType::MAT4);
@@ -722,10 +724,12 @@ void OpenGLContent::DrawTexturedQuad(GLfloat x, GLfloat y, GLfloat width, GLfloa
     OpenGLState::UseProgram(0);
 }
 
-void OpenGLContent::DrawCubemapCross(GLuint texture)
+void OpenGLContent::DrawCubemapCross(GLuint texture, GLfloat exposure)
 {
     basicShaders["tex_cube"]->Use();
     basicShaders["tex_cube"]->SetUniform("tex", TEX_BASE);
+    // Debug visualization: cubemaps are typically HDR.
+    basicShaders["tex_cube"]->SetUniform("exposure", exposure);
     
     OpenGLState::BindTexture(TEX_BASE, GL_TEXTURE_CUBE_MAP, texture);
     OpenGLState::BindVertexArray(baseVertexArray);

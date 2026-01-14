@@ -22,9 +22,21 @@
 in vec3 texcoord;
 out vec4 fragcolor;
 uniform samplerCube tex;
+uniform float exposure;
     
 void main(void)
 {
-    vec4 color = texture(tex, texcoord);
-    fragcolor = vec4(color.rgb, 1.0);
+    // Cubemaps in Stonefish are typically stored in linear HDR; apply a lightweight tonemap for display.
+    vec3 hdr = texture(tex, texcoord).rgb;
+    // If the cubemap contains NaNs/Infs (often due to invalid lighting/atmosphere state), make it obvious.
+    if(any(isnan(hdr)) || any(isinf(hdr)))
+    {
+        fragcolor = vec4(1.0, 0.0, 1.0, 1.0);
+        return;
+    }
+
+    hdr = max(hdr, vec3(0.0)) * max(exposure, 0.0);
+    vec3 ldr = hdr / (vec3(1.0) + hdr); // Reinhard
+    ldr = pow(ldr, vec3(1.0 / 2.2));    // approx gamma
+    fragcolor = vec4(clamp(ldr, 0.0, 1.0), 1.0);
 }

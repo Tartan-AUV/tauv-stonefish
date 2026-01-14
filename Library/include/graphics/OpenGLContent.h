@@ -181,7 +181,7 @@ namespace sf
         /*!
          \param texture the id of the texture
          */
-        void DrawCubemapCross(GLuint texture);
+        void DrawCubemapCross(GLuint texture, GLfloat exposure = 0.00015f);
         
         //! A method to draw a Cartesian coord system with color-coded axes.
         /*!

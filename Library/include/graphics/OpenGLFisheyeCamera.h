@@ -57,10 +57,12 @@ namespace sf
         GLfloat GetFOVY() const override;
         GLfloat GetNearClip() const override;
         GLfloat GetFarClip() const override;
+        GLint* GetViewport() const override;
         bool needsUpdate() override;
         ViewType getType() const override;
 
         void SetupCamera(glm::vec3 _eye, glm::vec3 _dir, glm::vec3 _up);
+        void SetExposure(GLfloat exposure);
         void ComputeOutput(std::vector<Renderable>& objects, class Ocean* ocean);
         void Update();
 
@@ -83,6 +85,8 @@ namespace sf
         glm::vec3 eye;
         glm::vec3 dir;
         glm::vec3 up;
+        glm::vec3 currentDir;
+        glm::vec3 currentUp;
         glm::vec3 tempEye;
         glm::vec3 tempDir;
         glm::vec3 tempUp;
@@ -91,7 +95,11 @@ namespace sf
         GLfloat near;
         GLfloat far;
         GLfloat focal;
+        GLfloat exposure;
         GLint cubeSize;
+        bool viewportOverrideEnabled;
+        GLint viewportOverrideW;
+        GLint viewportOverrideH;
 
         bool _needsUpdate;
         bool newData;
@@ -101,6 +109,7 @@ namespace sf
         glm::mat4 currentProj;
 
         static GLSLShader* warpShader;
+        static GLSLShader* flipShader;
     };
 }
 

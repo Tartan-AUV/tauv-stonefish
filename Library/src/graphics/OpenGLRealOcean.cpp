@@ -72,9 +72,11 @@ OpenGLRealOcean::OpenGLRealOcean(GLfloat size, GLfloat state, SDL_mutex* hydrody
     sources.clear();
     GLint compiled;
     GLuint pcssFragment = GLSLShader::LoadShader(GL_FRAGMENT_SHADER, "lighting.frag", "", &compiled);
+    GLuint shadingModelFragment = GLSLShader::LoadShader(GL_FRAGMENT_SHADER, "blinnPhong.frag", "", &compiled);
     std::vector<GLuint> precompiled;
     precompiled.push_back(OpenGLAtmosphere::getAtmosphereAPI());
     precompiled.push_back(pcssFragment);
+    precompiled.push_back(shadingModelFragment);
 
     //Surface rendering
     sources.push_back(GLSLSource(GL_VERTEX_SHADER, "qt.vert"));
@@ -144,7 +146,8 @@ OpenGLRealOcean::OpenGLRealOcean(GLfloat size, GLfloat state, SDL_mutex* hydrody
     OpenGLState::UseProgram(0);    
 
     //Back surface rendering
-    precompiled.pop_back();
+    precompiled.pop_back(); // shadingModelFragment
+    precompiled.pop_back(); // pcssFragment
     sources.pop_back();
     sources.push_back(GLSLSource(GL_FRAGMENT_SHADER, "oceanBacksurface.frag"));
     sources.push_back(GLSLSource(GL_FRAGMENT_SHADER, "oceanOptics.frag"));
