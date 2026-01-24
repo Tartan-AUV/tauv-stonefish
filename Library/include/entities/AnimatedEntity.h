@@ -178,6 +178,8 @@ namespace sf
         //! A method returning a pointer to the body trajectory.
         Trajectory* getTrajectory();
 
+        void setTrajectory(Trajectory* tr);
+
         //! A method returning the extents of the body axis alligned bounding box.
         /*!
          \param min a point located at the minimum coordinate corner

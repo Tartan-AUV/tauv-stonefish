@@ -179,6 +179,8 @@ namespace sf
          \param ent a pointer to the multibody object
          */
         void RemoveFeatherstoneEntity(FeatherstoneEntity* ent);
+
+        void RemoveAnimatedEntity(sf::AnimatedEntity* ent);
         
         //! A method that adds a discrete joint to the simulation world.
         /*!

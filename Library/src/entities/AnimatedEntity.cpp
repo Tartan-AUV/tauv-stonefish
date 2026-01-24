@@ -243,6 +243,12 @@ Trajectory* AnimatedEntity::getTrajectory()
     return tr;
 }
 
+void AnimatedEntity::setTrajectory(Trajectory* tr_){
+    if(tr != nullptr)
+        delete tr;
+    tr = tr_;
+}
+
 void AnimatedEntity::getAABB(Vector3& min, Vector3& max)
 {
     if(rigidBody != nullptr)
