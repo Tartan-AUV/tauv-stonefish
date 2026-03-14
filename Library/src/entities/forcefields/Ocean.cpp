@@ -176,7 +176,7 @@ Scalar Ocean::GetPressure(const Vector3& point)
 {
     Scalar g = SimulationApp::getApp()->getSimulationManager()->getGravity().getZ();
     Scalar d = GetDepth(point);
-    Scalar pressure = d > Scalar(0) ? d*liquid.density*g : Scalar(0);
+    Scalar pressure = d < Scalar(0) ? -d*liquid.density*g : Scalar(0);
     return pressure;
 }
 
