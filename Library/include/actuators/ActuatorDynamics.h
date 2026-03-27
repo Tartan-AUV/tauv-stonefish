@@ -29,6 +29,8 @@
 
 #include "StonefishCommon.h"
 #include <memory>
+#include <algorithm>
+#include <iostream>
 
 namespace sf
 {
@@ -110,6 +112,7 @@ namespace sf
         {
             Scalar alpha = dt / tau;
             Scalar output = alpha * sp + (1 - alpha) * lastOutput;
+            std::cout << "lastOutput: " << lastOutput << ", setpoint: " << sp << ", output: " << output << std::endl;
             lastOutput = outputLimit > Scalar(0) ?  btClamped(output, -outputLimit, outputLimit) : output;
             return lastOutput;
         }
@@ -374,13 +377,32 @@ namespace sf
           \param out list of thrust data points
         */
         InterpolatedThrust(const std::vector<Scalar>& in, const std::vector<Scalar>& out)
-            : inputValues(in), outputValues(out)
         {
-            if (inputValues.empty() || outputValues.empty())
+            if (in.empty() || out.empty())
                 throw std::runtime_error("Interpolated thrust model: input and output values must not be empty!");
 
-            if (inputValues.size() != outputValues.size())
+            if (in.size() != out.size())
                 throw std::runtime_error("Interpolated thrust model: input and output values must be same size!");
+
+            // Combine into pairs so we can sort them together
+            std::vector<std::pair<Scalar, Scalar>> combined;
+            combined.reserve(in.size());
+            for (size_t i = 0; i < in.size(); ++i) {
+                combined.push_back({in[i], out[i]});
+            }
+
+            // Sort in ascending order
+            std::sort(combined.begin(), combined.end(), [](const auto& a, const auto& b) {
+                return a.first < b.first;
+            });
+
+            // Unpack back into the member variables
+            inputValues.reserve(combined.size());
+            outputValues.reserve(combined.size());
+            for (const auto& pair : combined) {
+                inputValues.push_back(pair.first);
+                outputValues.push_back(pair.second);
+            }
         }
 
         //! A method computing the model output.
