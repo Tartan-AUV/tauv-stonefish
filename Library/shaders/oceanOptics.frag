@@ -21,6 +21,8 @@
 
 uniform vec3 cWater;
 uniform vec3 bWater;
+uniform float causticsIntensity; //0 = disabled (default value of an unset uniform)
+uniform float causticsTime;      //Simulation time [s] used to animate caustics
 
 const float water2air = 1.33/1.0;
 const float air2water = 1.0/1.33;
@@ -81,6 +83,64 @@ vec3 RefractToAir(vec3 I, vec3 N)
 vec3 BeerLambert(float d)
 {
 	return exp(-cWater*d);
+}
+
+/*
+    Caustics: focusing of sunlight by a rippled water surface.
+    The surface is h(x,t) = sum_i a_i sin(k_i.x - w_i t + phi_i). A sun ray entering the surface at x
+    is bent by the local slope and lands (small-slope approximation) at x + f*grad(h), f = (1-1/n)*depth.
+    Energy conservation gives receiver irradiance ~ 1/|det J|, J = I + f*Hess(h): curved patches of
+    the surface focus light into the bright network of lines seen on pool floors.
+
+    \param P world-space position of the lit point
+    \param S refracted sun direction in water (z > 0 = downwards)
+    \param depth depth of P below the water surface
+    \return multiplier for direct sunlight (1.0 when caustics are disabled)
+*/
+const int causticsWaves = 25;
+
+float Caustics(vec3 P, vec3 S, float depth)
+{
+    //Point where the refracted sun ray hitting P entered the water
+    vec2 x = P.xy - S.xy * (max(depth, 0.0) / max(S.z, 0.05));
+    //Screen-space footprint of the pattern, computed before any non-uniform branching (derivatives)
+    float footprint = length(fwidth(x));
+
+    if(causticsIntensity <= 0.0 || depth <= 0.0 || S.z <= 0.0)
+        return 1.0;
+
+    float f = (1.0 - air2water) * min(depth, 2.5); //Cap so deep surfaces don't over-fold into noise
+    //Slow envelope (3-5 m, drifting) varies focusing strength across the floor, like real wave groups
+    float envelope = (sin(dot(x, vec2(0.9, 0.4)) * (2.0 * PI / 5.1) + 0.3 + 0.11 * causticsTime)
+                    + sin(dot(x, vec2(-0.3, 0.95)) * (2.0 * PI / 3.9) + 1.7 - 0.07 * causticsTime)
+                    + sin(dot(x, vec2(0.6, 0.8)) * (2.0 * PI / 2.9) + 4.4 + 0.05 * causticsTime)) / 3.0;
+    f *= 1.0 + 0.5 * envelope;
+    mat2 H = mat2(0.0);
+    for(int i=0; i<causticsWaves; ++i)
+    {
+        float fi = float(i);
+		float u = fract(fi * 0.618034 + 0.31);                               //Wavelength rank in [0,1)
+		//Golden-ratio spread over wavelength rank: waves of similar size never share a direction
+		float angle = PI * fract(floor(u * float(causticsWaves)) * 0.618034 + 0.1);
+        vec2 dir = vec2(cos(angle), sin(angle));
+		float lambda = 0.14 * pow(6.0, u);
+        float k = 2.0 * PI / lambda;
+        float omega = sqrt(9.81 * k);                                    //Deep-water dispersion
+		float a = 0.0028 * sqrt(25.0 / float(causticsWaves)) * lambda * (lambda / 0.4);
+        float phase = 2.0 * PI * fract(sin(fi * 91.7) * 43758.5453);         //Hashed (non-sequential) phases
+        H -= a * k * k * sin(k * dot(dir, x) - omega * causticsTime + phase) * outerProduct(dir, dir);
+    }
+    // float I = min(1.0 / max(abs(determinant(mat2(1.0) + f * H)), 0.1), 8.0);
+	float det = determinant(mat2(1.0) + f * H);
+	float I = min(1.0 / max(abs(det), 0.06 + 0.015 * depth), 12.0);
+
+    //Keep mean irradiance ~1 at every depth (empirical fit of the pattern's mean vs f)
+    float f2 = f * f;
+    I /= 1.0 + 0.93 * f2 + 3.0 * f2 * f2;
+
+    //Fade out where a pixel covers several caustic cells (prevents shimmering/aliasing in the distance)
+    float aa = 1.0 - smoothstep(0.03, 0.15, footprint);
+    return max(mix(1.0, I, causticsIntensity * aa), 0.0);
 }
 
 /*

@@ -72,6 +72,7 @@ OpenGLPipeline::OpenGLPipeline(RenderSettings s, HelperSettings h) : rSettings(s
     OpenGLSonar::Init();
     OpenGLOceanParticles::Init();
     content = new OpenGLContent();
+    content->SetCaustics(rSettings.caustics);
     
     //Create display framebuffer
     glGenFramebuffers(1, &screenFBO);

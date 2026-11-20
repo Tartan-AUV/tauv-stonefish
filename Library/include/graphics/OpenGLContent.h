@@ -134,6 +134,12 @@ namespace sf
          \param m drawing mode
          */
         void SetDrawingMode(DrawingMode m);
+
+        //! A method to enable/disable underwater sunlight caustics.
+        /*!
+         \param enabled a flag indicating if caustics should be rendered
+         */
+        void SetCaustics(bool enabled);
         
         //! A method to set current view.
         /*!
@@ -537,6 +543,7 @@ namespace sf
         //Modes
         DrawingMode mode;
         GLfloat maxAnisotropy;
+        bool caustics;
         
         //Data
         std::vector<OpenGLView*> views;

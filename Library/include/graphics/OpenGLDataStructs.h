@@ -576,6 +576,7 @@ namespace sf
         RenderQuality aa;
         RenderQuality ssr;
         bool verticalSync;
+        bool caustics;
         
         //! A constructor.
         RenderSettings()
@@ -589,6 +590,7 @@ namespace sf
             aa = RenderQuality::MEDIUM;
             ssr = RenderQuality::MEDIUM;
             verticalSync = false;
+            caustics = false;
         }
     };
     

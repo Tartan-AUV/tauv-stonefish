@@ -54,6 +54,7 @@ vec3 SunContribution(vec3 P, vec3 N, vec3 toEye, vec3 albedo, vec3 illuminance);
 vec3 RefractToWater(vec3 I, vec3 N);
 vec3 RefractToAir(vec3 I, vec3 N);
 vec3 BeerLambert(float d);
+float Caustics(vec3 P, vec3 S, float depth);
 vec3 InScatteringSun(vec3 L, vec3 D, vec3 V, float z, float d);
 vec3 InScatteringPointLight(vec3 O, vec3 L, vec3 X, vec3 V, vec3 P, float d, float dw);
 vec3 InScatteringSpotLight(vec3 O, vec3 D, float w, float fn, vec3 L, vec3 X, vec3 V, vec3 P, float d, float dw);
@@ -102,7 +103,7 @@ void main()
 	
 	//Sun
 	if(S.z > 0.0)
-		fragColor.rgb += SunContribution(P, N, V, albedo.rgb, sunIlluminance) * BeerLambert(dw + depth/S.z);
+		fragColor.rgb += SunContribution(P, N, V, albedo.rgb, sunIlluminance) * BeerLambert(dw + depth/S.z) * Caustics(P, S, depth);
 	
 	fragColor.rgb = fragColor.rgb/whitePoint; //Color correction and normalization
 	

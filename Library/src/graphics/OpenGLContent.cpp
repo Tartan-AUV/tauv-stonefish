@@ -56,6 +56,7 @@ namespace sf
 OpenGLContent::OpenGLContent()
 {
     //Initialize members
+    caustics = false;
     baseVertexArray = 0;
     cubeBuf = 0;
     lightsUBO = 0;
@@ -289,12 +290,16 @@ OpenGLContent::OpenGLContent()
         ms.shaders["plain_underwater"] = new GLSLShader(precompiled);
         ms.shaders["plain_underwater"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["plain_underwater"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["plain_underwater"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["plain_underwater"]->AddUniform("causticsTime", ParameterType::FLOAT);
         
         precompiled.pop_back();
         precompiled.push_back(oceanWavesFragment);
         ms.shaders["plain_underwater_waves"] = new GLSLShader(precompiled);
         ms.shaders["plain_underwater_waves"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["plain_underwater_waves"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["plain_underwater_waves"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["plain_underwater_waves"]->AddUniform("causticsTime", ParameterType::FLOAT);
         ms.shaders["plain_underwater_waves"]->AddUniform("texWaveFFT", ParameterType::INT);
         ms.shaders["plain_underwater_waves"]->AddUniform("gridSizes", ParameterType::VEC4);
         
@@ -332,6 +337,8 @@ OpenGLContent::OpenGLContent()
         ms.shaders["textured_underwater"]->AddUniform("enableNormalTex", ParameterType::BOOLEAN);
         ms.shaders["textured_underwater"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["textured_underwater"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["textured_underwater"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["textured_underwater"]->AddUniform("causticsTime", ParameterType::FLOAT);
         
         precompiled.pop_back();
         precompiled.push_back(oceanWavesFragment);
@@ -342,6 +349,8 @@ OpenGLContent::OpenGLContent()
         ms.shaders["textured_underwater_waves"]->AddUniform("enableNormalTex", ParameterType::BOOLEAN);
         ms.shaders["textured_underwater_waves"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["textured_underwater_waves"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["textured_underwater_waves"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["textured_underwater_waves"]->AddUniform("causticsTime", ParameterType::FLOAT);
         ms.shaders["textured_underwater_waves"]->AddUniform("texWaveFFT", ParameterType::INT);
         ms.shaders["textured_underwater_waves"]->AddUniform("gridSizes", ParameterType::VEC4);
 
@@ -370,6 +379,8 @@ OpenGLContent::OpenGLContent()
         ms.shaders["cable_textured_underwater"]->AddUniform("enableNormalTex", ParameterType::BOOLEAN);
         ms.shaders["cable_textured_underwater"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["cable_textured_underwater"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["cable_textured_underwater"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["cable_textured_underwater"]->AddUniform("causticsTime", ParameterType::FLOAT);
         ms.shaders["cable_textured_underwater"]->AddUniform("cableRadius", ParameterType::FLOAT);
 
         precompiled.pop_back();
@@ -381,6 +392,8 @@ OpenGLContent::OpenGLContent()
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("enableNormalTex", ParameterType::BOOLEAN);
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("cWater", ParameterType::VEC3);
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("bWater", ParameterType::VEC3);
+        ms.shaders["cable_textured_underwater_waves"]->AddUniform("causticsIntensity", ParameterType::FLOAT);
+        ms.shaders["cable_textured_underwater_waves"]->AddUniform("causticsTime", ParameterType::FLOAT);
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("texWaveFFT", ParameterType::INT);
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("gridSizes", ParameterType::VEC4);
         ms.shaders["cable_textured_underwater_waves"]->AddUniform("cableRadius", ParameterType::FLOAT);
@@ -651,6 +664,11 @@ void OpenGLContent::SetCurrentView(OpenGLView* v)
 void OpenGLContent::SetDrawingMode(DrawingMode m)
 {
     mode = m;
+}
+
+void OpenGLContent::SetCaustics(bool enabled)
+{
+    caustics = enabled;
 }
 
 void OpenGLContent::BindBaseVertexArray()
@@ -1144,6 +1162,8 @@ void OpenGLContent::UseLook(const Look& look, bool texturable, const glm::mat4& 
     {
         shader->SetUniform("cWater", ocean->getOpenGLOcean()->getLightAttenuation());
         shader->SetUniform("bWater", ocean->getOpenGLOcean()->getLightScattering());
+        shader->SetUniform("causticsIntensity", caustics ? 1.f : 0.f);
+        shader->SetUniform("causticsTime", (GLfloat)SimulationApp::getApp()->getSimulationManager()->getSimulationTime());
         if(waves)
         {
             OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_2D_ARRAY, ocean->getOpenGLOcean()->getWaveTexture());
@@ -1270,6 +1290,8 @@ void OpenGLContent::UseCableLook(const Look& look, GLfloat radius)
     {
         shader->SetUniform("cWater", ocean->getOpenGLOcean()->getLightAttenuation());
         shader->SetUniform("bWater", ocean->getOpenGLOcean()->getLightScattering());
+        shader->SetUniform("causticsIntensity", caustics ? 1.f : 0.f);
+        shader->SetUniform("causticsTime", (GLfloat)SimulationApp::getApp()->getSimulationManager()->getSimulationTime());
         if(waves)
         {
             OpenGLState::BindTexture(TEX_POSTPROCESS1, GL_TEXTURE_2D_ARRAY, ocean->getOpenGLOcean()->getWaveTexture());
